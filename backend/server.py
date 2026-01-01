@@ -533,6 +533,116 @@ class DeploymentUpdate(BaseModel):
     notes: Optional[str] = None
     items: Optional[List[dict]] = None
 
+# ==================== SOFTWARE & LICENSE MODULE ====================
+
+class License(BaseModel):
+    """Software License entity for tracking software assets and renewals"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
+    software_name: str  # e.g., "Windows 11 Pro", "Microsoft 365 Business", "Antivirus"
+    vendor: Optional[str] = None  # Microsoft, Adobe, etc.
+    license_type: str = "subscription"  # perpetual, subscription
+    license_key: Optional[str] = None  # Masked/encrypted in responses
+    seats: int = 1  # Number of allowed installations
+    assigned_to_type: str = "company"  # company, devices, users
+    assigned_device_ids: List[str] = []  # If assigned to specific devices
+    assigned_user_ids: List[str] = []  # If assigned to specific users
+    start_date: str
+    end_date: Optional[str] = None  # Null for perpetual licenses
+    purchase_cost: Optional[float] = None
+    renewal_cost: Optional[float] = None
+    auto_renew: bool = False
+    renewal_reminder_days: int = 30  # Days before expiry to send reminder
+    status: str = "active"  # active, expiring, expired, cancelled
+    notes: Optional[str] = None
+    is_deleted: bool = False
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class LicenseCreate(BaseModel):
+    company_id: str
+    software_name: str
+    vendor: Optional[str] = None
+    license_type: str = "subscription"
+    license_key: Optional[str] = None
+    seats: int = 1
+    assigned_to_type: str = "company"
+    assigned_device_ids: List[str] = []
+    assigned_user_ids: List[str] = []
+    start_date: str
+    end_date: Optional[str] = None
+    purchase_cost: Optional[float] = None
+    renewal_cost: Optional[float] = None
+    auto_renew: bool = False
+    renewal_reminder_days: int = 30
+    notes: Optional[str] = None
+
+class LicenseUpdate(BaseModel):
+    software_name: Optional[str] = None
+    vendor: Optional[str] = None
+    license_type: Optional[str] = None
+    license_key: Optional[str] = None
+    seats: Optional[int] = None
+    assigned_to_type: Optional[str] = None
+    assigned_device_ids: Optional[List[str]] = None
+    assigned_user_ids: Optional[List[str]] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    purchase_cost: Optional[float] = None
+    renewal_cost: Optional[float] = None
+    auto_renew: Optional[bool] = None
+    renewal_reminder_days: Optional[int] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+# ==================== AMC DEVICE ASSIGNMENT (Join Table) ====================
+
+class AMCDeviceAssignment(BaseModel):
+    """Join table for AMC Contract to Device assignments"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    amc_contract_id: str
+    device_id: str
+    coverage_start: str
+    coverage_end: str
+    coverage_source: str = "manual"  # manual, bulk_upload, filter_based
+    status: str = "active"  # active, expired, suspended
+    notes: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_by: Optional[str] = None
+
+class AMCDeviceAssignmentCreate(BaseModel):
+    amc_contract_id: str
+    device_id: str
+    coverage_start: str
+    coverage_end: str
+    coverage_source: str = "manual"
+    notes: Optional[str] = None
+
+class AMCBulkAssignmentPreview(BaseModel):
+    amc_contract_id: str
+    device_identifiers: List[str]  # Serial numbers or asset tags
+    coverage_start: str
+    coverage_end: str
+
+# ==================== SERVICE RECORD PARTS (Enhanced) ====================
+
+class ServicePartUsed(BaseModel):
+    """Part used during a service record"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    part_name: str
+    part_type: str  # hardware, software
+    serial_number: Optional[str] = None
+    quantity: int = 1
+    replacement_type: str = "new"  # new, refurbished, temporary
+    warranty_inherited_from_amc: bool = False
+    warranty_start_date: Optional[str] = None
+    warranty_end_date: Optional[str] = None
+    linked_device_id: Optional[str] = None
+    cost: Optional[float] = None
+    notes: Optional[str] = None
+
 # ==================== AUDIT LOG (Hidden) ====================
 
 class AuditLog(BaseModel):
