@@ -1,0 +1,186 @@
+import { useEffect } from 'react';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { 
+  LayoutDashboard, Building2, Users, Laptop, Wrench, 
+  FileCheck, Settings, LogOut, Shield, Menu, X, ChevronRight
+} from 'lucide-react';
+import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
+import { Button } from '../components/ui/button';
+
+const navItems = [
+  { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/admin/companies', label: 'Companies', icon: Building2 },
+  { path: '/admin/users', label: 'Users', icon: Users },
+  { path: '/admin/devices', label: 'Devices', icon: Laptop },
+  { path: '/admin/parts', label: 'Parts', icon: Wrench },
+  { path: '/admin/amc', label: 'AMC', icon: FileCheck },
+  { path: '/admin/settings', label: 'Settings', icon: Settings },
+];
+
+const AdminLayout = () => {
+  const { admin, loading, isAuthenticated, logout } = useAuth();
+  const { settings } = useSettings();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      navigate('/admin/login');
+    }
+  }, [loading, isAuthenticated, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-8 h-8 border-4 border-[#0F62FE] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  const handleLogout = () => {
+    logout();
+    navigate('/admin/login');
+  };
+
+  const currentPage = navItems.find(item => location.pathname.startsWith(item.path))?.label || 'Dashboard';
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+        <div className="flex items-center gap-3">
+          {(settings.logo_base64 || settings.logo_url) ? (
+            <img 
+              src={settings.logo_base64 || settings.logo_url} 
+              alt="Logo" 
+              className="h-8 w-auto"
+            />
+          ) : (
+            <Shield className="h-7 w-7 text-[#0F62FE]" />
+          )}
+          <span className="font-semibold text-slate-900">{currentPage}</span>
+        </div>
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          data-testid="mobile-menu-btn"
+        >
+          {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-100 z-50
+        transform transition-transform duration-300 ease-in-out
+        lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="flex flex-col h-full">
+          {/* Logo */}
+          <div className="p-6 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              {(settings.logo_base64 || settings.logo_url) ? (
+                <img 
+                  src={settings.logo_base64 || settings.logo_url} 
+                  alt="Logo" 
+                  className="h-8 w-auto"
+                />
+              ) : (
+                <Shield className="h-8 w-8 text-[#0F62FE]" />
+              )}
+              <div>
+                <span className="font-semibold text-slate-900 text-sm">{settings.company_name}</span>
+                <p className="text-xs text-slate-500">Admin Portal</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) => `
+                  sidebar-link ${isActive ? 'active' : ''}
+                `}
+                data-testid={`nav-${item.label.toLowerCase()}`}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+
+          {/* User & Logout */}
+          <div className="p-4 border-t border-slate-100">
+            <div className="flex items-center gap-3 px-4 py-3 mb-2">
+              <div className="w-8 h-8 rounded-full bg-[#E8F0FE] flex items-center justify-center">
+                <span className="text-sm font-medium text-[#0F62FE]">
+                  {admin?.name?.charAt(0).toUpperCase() || 'A'}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-900 truncate">{admin?.name}</p>
+                <p className="text-xs text-slate-500 truncate">{admin?.email}</p>
+              </div>
+            </div>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-slate-600 hover:text-red-600 hover:bg-red-50"
+              onClick={handleLogout}
+              data-testid="logout-btn"
+            >
+              <LogOut className="h-4 w-4 mr-3" />
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="lg:ml-64 min-h-screen">
+        {/* Desktop Header */}
+        <header className="hidden lg:flex items-center justify-between bg-white border-b border-slate-100 px-8 py-4 sticky top-0 z-30">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <a href="/" className="hover:text-slate-700">Portal</a>
+            <ChevronRight className="h-3 w-3" />
+            <span className="text-slate-900 font-medium">{currentPage}</span>
+          </div>
+          <a 
+            href="/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-sm text-slate-500 hover:text-[#0F62FE] transition-colors"
+          >
+            View Public Portal →
+          </a>
+        </header>
+
+        {/* Page Content */}
+        <div className="p-6 lg:p-8">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default AdminLayout;
