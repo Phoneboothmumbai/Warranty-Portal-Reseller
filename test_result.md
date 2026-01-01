@@ -169,6 +169,54 @@ backend:
     priority: "high"
     needs_retesting: false
 
+  - task: "AMC Contracts v2 CRUD APIs"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ AMC Contracts v2 CRUD APIs fully functional. Tested: GET /api/admin/amc-contracts (list with computed status), POST /api/admin/amc-contracts (create with coverage/exclusions), GET /api/admin/amc-contracts/{id} (details with covered assets), PUT /api/admin/amc-contracts/{id} (update). All endpoints working correctly with proper data structure and business logic."
+
+  - task: "AMC Coverage Check API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ AMC Coverage Check API working correctly. GET /api/admin/amc-contracts/check-coverage/{device_id} returns proper structure with device info, coverage status, and active contracts. Correctly handles different asset mapping types (all_company, selected_assets, device_types)."
+
+  - task: "Companies Without AMC API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Companies Without AMC API working correctly. GET /api/admin/companies-without-amc returns list of companies without active AMC contracts with proper structure (id, name, contact_email)."
+
+  - task: "Dashboard Alerts with AMC Contracts"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Dashboard Alerts API enhanced with AMC Contracts v2 alerts. Now includes amc_contracts_expiring_7_days, amc_contracts_expiring_15_days, amc_contracts_expiring_30_days, and companies_without_amc fields. All alert types working correctly."
+
 frontend:
   - task: "Admin Login & Auth Flow"
     implemented: true
