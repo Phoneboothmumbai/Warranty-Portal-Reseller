@@ -17,7 +17,10 @@ class WarrantyPortalTester:
             'user_id': None,
             'device_id': None,
             'part_id': None,
-            'amc_id': None
+            'amc_id': None,
+            'service_id': None,
+            'master_id': None,
+            'serial_number': None
         }
 
     def log(self, message):
