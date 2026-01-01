@@ -19,6 +19,7 @@ import Parts from "./pages/admin/Parts";
 import AMCManagement from "./pages/admin/AMCManagement";
 import Settings from "./pages/admin/Settings";
 import MasterData from "./pages/admin/MasterData";
+import ServiceHistory from "./pages/admin/ServiceHistory";
 
 function App() {
   return (
