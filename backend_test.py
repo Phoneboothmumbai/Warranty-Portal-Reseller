@@ -803,11 +803,15 @@ class WarrantyPortalTester:
             ("Service History CRUD", self.test_service_history_crud),
             ("Parts CRUD", self.test_parts_crud),
             ("AMC CRUD", self.test_amc_crud),
+            ("AMC Contracts v2 CRUD", self.test_amc_contracts_v2_crud),
+            ("AMC Coverage Check", self.test_amc_coverage_check),
+            ("Companies Without AMC", self.test_companies_without_amc),
             ("Device Timeline", self.test_device_timeline),
             ("Warranty Search", self.test_warranty_search),
             ("PDF Generation", self.test_pdf_generation),
             ("Dashboard Stats", self.test_dashboard_stats),
             ("Dashboard Alerts", self.test_dashboard_alerts),
+            ("Dashboard Alerts with AMC Contracts", self.test_dashboard_alerts_with_amc_contracts),
             ("Settings CRUD", self.test_settings_crud)
         ]
         
