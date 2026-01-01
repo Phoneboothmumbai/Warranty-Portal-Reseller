@@ -1,0 +1,375 @@
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { Plus, Search, Edit2, Trash2, Wrench, MoreVertical, Laptop, CheckCircle2, XCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { Button } from '../../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
+import { toast } from 'sonner';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+const partTypes = ['Keyboard', 'Battery', 'HDD', 'SSD', 'RAM', 'Screen', 'Motherboard', 'Power Supply', 'Camera Lens', 'Fan', 'Charger', 'Other'];
+
+const Parts = () => {
+  const { token } = useAuth();
+  const [parts, setParts] = useState([]);
+  const [devices, setDevices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterDevice, setFilterDevice] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingPart, setEditingPart] = useState(null);
+  const [formData, setFormData] = useState({
+    device_id: '',
+    part_name: 'Keyboard',
+    replaced_date: '',
+    warranty_months: 3,
+    notes: ''
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, [filterDevice]);
+
+  const fetchData = async () => {
+    try {
+      const [partsRes, devicesRes] = await Promise.all([
+        axios.get(`${API}/admin/parts`, {
+          params: filterDevice ? { device_id: filterDevice } : {},
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API}/admin/devices`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+      setParts(partsRes.data);
+      setDevices(devicesRes.data);
+    } catch (error) {
+      toast.error('Failed to fetch data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.device_id || !formData.part_name || !formData.replaced_date || !formData.warranty_months) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+
+    try {
+      if (editingPart) {
+        await axios.put(`${API}/admin/parts/${editingPart.id}`, formData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        toast.success('Part updated');
+      } else {
+        await axios.post(`${API}/admin/parts`, formData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        toast.success('Part created');
+      }
+      fetchData();
+      closeModal();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Operation failed');
+    }
+  };
+
+  const handleDelete = async (part) => {
+    if (!window.confirm(`Delete "${part.part_name}" part record?`)) return;
+    
+    try {
+      await axios.delete(`${API}/admin/parts/${part.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Part deleted');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to delete part');
+    }
+  };
+
+  const openCreateModal = () => {
+    setEditingPart(null);
+    setFormData({
+      device_id: filterDevice || '',
+      part_name: 'Keyboard',
+      replaced_date: new Date().toISOString().split('T')[0],
+      warranty_months: 3,
+      notes: ''
+    });
+    setModalOpen(true);
+  };
+
+  const openEditModal = (part) => {
+    setEditingPart(part);
+    setFormData({
+      device_id: part.device_id,
+      part_name: part.part_name,
+      replaced_date: part.replaced_date,
+      warranty_months: part.warranty_months,
+      notes: part.notes || ''
+    });
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingPart(null);
+  };
+
+  const getDeviceInfo = (deviceId) => {
+    const device = devices.find(d => d.id === deviceId);
+    return device ? `${device.brand} ${device.model} (${device.serial_number})` : 'Unknown';
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const isWarrantyActive = (dateStr) => {
+    if (!dateStr) return false;
+    return new Date(dateStr) >= new Date();
+  };
+
+  const filteredParts = parts.filter(p => 
+    p.part_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-[#0F62FE] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6" data-testid="parts-page">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Parts</h1>
+          <p className="text-slate-500 mt-1">Track replaced parts and warranties</p>
+        </div>
+        <Button 
+          onClick={openCreateModal}
+          className="bg-[#0F62FE] hover:bg-[#0043CE] text-white"
+          data-testid="add-part-btn"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Part
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search parts..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="form-input pl-11"
+            data-testid="search-parts"
+          />
+        </div>
+        <select
+          value={filterDevice}
+          onChange={(e) => setFilterDevice(e.target.value)}
+          className="form-select w-full sm:w-80"
+        >
+          <option value="">All Devices</option>
+          {devices.map(d => (
+            <option key={d.id} value={d.id}>{d.brand} {d.model} ({d.serial_number})</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+        {filteredParts.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full table-modern">
+              <thead>
+                <tr>
+                  <th>Part</th>
+                  <th>Device</th>
+                  <th>Replaced</th>
+                  <th>Warranty</th>
+                  <th>Status</th>
+                  <th className="w-16"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredParts.map((part) => (
+                  <tr key={part.id} data-testid={`part-row-${part.id}`}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                          <Wrench className="h-4 w-4 text-slate-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900">{part.part_name}</p>
+                          {part.notes && (
+                            <p className="text-xs text-slate-500 truncate max-w-[200px]">{part.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <Laptop className="h-3.5 w-3.5 text-slate-400" />
+                        <span className="text-sm">{getDeviceInfo(part.device_id)}</span>
+                      </div>
+                    </td>
+                    <td className="text-sm">{formatDate(part.replaced_date)}</td>
+                    <td>
+                      <div>
+                        <p className="text-sm">{part.warranty_months} months</p>
+                        <p className="text-xs text-slate-500">Until {formatDate(part.warranty_expiry_date)}</p>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        {isWarrantyActive(part.warranty_expiry_date) ? (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                            <span className="badge-active">Covered</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 text-slate-400" />
+                            <span className="badge-expired">Expired</span>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditModal(part)}>
+                            <Edit2 className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDelete(part)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <Wrench className="h-12 w-12 mx-auto text-slate-300 mb-4" />
+            <p className="text-slate-500 mb-4">No parts found</p>
+            <Button onClick={openCreateModal} variant="outline">
+              <Plus className="h-4 w-4 mr-2" />
+              Add your first part
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingPart ? 'Edit Part' : 'Add Part'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <div>
+              <label className="form-label">Device *</label>
+              <select
+                value={formData.device_id}
+                onChange={(e) => setFormData({ ...formData, device_id: e.target.value })}
+                className="form-select"
+                data-testid="part-device-select"
+                disabled={editingPart}
+              >
+                <option value="">Select Device</option>
+                {devices.map(d => (
+                  <option key={d.id} value={d.id}>{d.brand} {d.model} ({d.serial_number})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Part Name *</label>
+              <select
+                value={formData.part_name}
+                onChange={(e) => setFormData({ ...formData, part_name: e.target.value })}
+                className="form-select"
+                data-testid="part-name-select"
+              >
+                {partTypes.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">Replaced Date *</label>
+                <input
+                  type="date"
+                  value={formData.replaced_date}
+                  onChange={(e) => setFormData({ ...formData, replaced_date: e.target.value })}
+                  className="form-input"
+                  data-testid="part-replaced-date-input"
+                />
+              </div>
+              <div>
+                <label className="form-label">Warranty (Months) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.warranty_months}
+                  onChange={(e) => setFormData({ ...formData, warranty_months: parseInt(e.target.value) || 1 })}
+                  className="form-input"
+                  data-testid="part-warranty-months-input"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="form-label">Notes</label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="form-input"
+                rows={2}
+                placeholder="Optional notes..."
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={closeModal}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-[#0F62FE] hover:bg-[#0043CE] text-white" data-testid="part-submit-btn">
+                {editingPart ? 'Update' : 'Create'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Parts;
