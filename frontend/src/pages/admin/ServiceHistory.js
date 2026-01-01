@@ -17,6 +17,7 @@ const ServiceHistory = () => {
   const { token } = useAuth();
   const [services, setServices] = useState([]);
   const [devices, setDevices] = useState([]);
+  const [amcContracts, setAmcContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDevice, setFilterDevice] = useState('');
@@ -26,6 +27,7 @@ const ServiceHistory = () => {
   const [selectedService, setSelectedService] = useState(null);
   const [editingService, setEditingService] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [deviceAmcCoverage, setDeviceAmcCoverage] = useState(null);
   
   // Master data
   const [serviceTypes, setServiceTypes] = useState([]);
@@ -39,7 +41,11 @@ const ServiceHistory = () => {
     warranty_impact: 'not_applicable',
     technician_name: '',
     ticket_id: '',
-    notes: ''
+    notes: '',
+    // AMC fields
+    amc_contract_id: '',
+    billing_type: 'covered',
+    chargeable_reason: ''
   });
 
   useEffect(() => {
@@ -63,20 +69,65 @@ const ServiceHistory = () => {
       const params = {};
       if (filterDevice) params.device_id = filterDevice;
       
-      const [servicesRes, devicesRes] = await Promise.all([
+      const [servicesRes, devicesRes, amcRes] = await Promise.all([
         axios.get(`${API}/admin/services`, {
           params,
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${API}/admin/devices`, {
           headers: { Authorization: `Bearer ${token}` }
-        })
+        }),
+        axios.get(`${API}/admin/amc-contracts`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => ({ data: [] }))
       ]);
       
       let filteredServices = servicesRes.data;
       if (filterType) {
         filteredServices = filteredServices.filter(s => s.service_type === filterType);
       }
+      
+      setServices(filteredServices);
+      setDevices(devicesRes.data);
+      setAmcContracts(amcRes.data);
+    } catch (error) {
+      toast.error('Failed to fetch data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check AMC coverage when device changes
+  const checkAmcCoverage = async (deviceId) => {
+    if (!deviceId) {
+      setDeviceAmcCoverage(null);
+      return;
+    }
+    try {
+      const response = await axios.get(`${API}/admin/amc-contracts/check-coverage/${deviceId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDeviceAmcCoverage(response.data);
+      
+      // Auto-set AMC contract if device is covered
+      if (response.data.is_covered && response.data.active_contracts.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          amc_contract_id: response.data.active_contracts[0].contract_id,
+          billing_type: 'covered'
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          amc_contract_id: '',
+          billing_type: 'chargeable',
+          chargeable_reason: 'No active AMC'
+        }));
+      }
+    } catch (error) {
+      setDeviceAmcCoverage(null);
+    }
+  };
       
       setServices(filteredServices);
       setDevices(devicesRes.data);
