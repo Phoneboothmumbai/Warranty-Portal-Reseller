@@ -92,15 +92,37 @@ Support multiple parts with different warranty periods for the same device.
 
 ## Phase 2 Roadmap (In Progress)
 
-### Phase 2B - Core Modules (Next)
-- [ ] Software & License Module (new entity + renewal tracking)
-- [ ] Service Record Enhancement (parts used + warranty impact)
-- [ ] AMC_Device join table + Bulk Assignment (3 options)
+### Phase 2A - Foundation ✅ COMPLETE (January 2026)
+- [x] SmartSelect Component - Searchable dropdown with async API search
+- [x] DateDurationInput Component - Dual mode (End Date / Duration)
+- [x] Quick Create Forms - Inline entity creation
+- [x] Backend Search Support - All list APIs support `?q=&limit=&page=`
+- [x] Duration Units Master - Days, Months, Years
 
-### Phase 2C - Bulk Operations & Polish
+### Phase 2B - Core Modules ✅ COMPLETE (January 2026)
+- [x] **Software & License Module** 
+  - Full CRUD APIs with renewal tracking
+  - License status calculation (active/expiring/expired)
+  - License expiring summary API
+  - Frontend Licenses page with stats cards
+  - SmartSelect and DateDurationInput integration
+- [x] **AMC Device Assignment System**
+  - AMC_Device join table for proper assignment tracking
+  - Single device assignment API
+  - Bulk assignment with preview/confirm workflow
+  - Device validation (company match, duplicates, not found)
+- [x] **Service Record Enhancement**
+  - Enhanced model with parts_used tracking
+  - Labor/parts cost fields
+  - Warranty impact fields (extends_device_warranty, new_warranty_end_date)
+  - AMC quota consumption tracking
+- [x] **Request Support CTA**
+  - Button on warranty result page
+  - Links to https://support.thegoodmen.in with context params
+
+### Phase 2C - Bulk Operations & Polish (Next)
 - [ ] Bulk Upload System (Template → Upload → Preview → Import)
   - Priority: Devices → Users → Companies → Sites → Parts → Licenses
-- [ ] Warranty Check → "Request Support" CTA (https://support.thegoodmen.in)
 
 ### Phase 3 - Future
 - [ ] WhatsApp Integration (QR-based notifications)
