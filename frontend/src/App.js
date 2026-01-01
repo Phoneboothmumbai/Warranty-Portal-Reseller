@@ -20,6 +20,7 @@ import AMCManagement from "./pages/admin/AMCManagement";
 import Settings from "./pages/admin/Settings";
 import MasterData from "./pages/admin/MasterData";
 import ServiceHistory from "./pages/admin/ServiceHistory";
+import AMCContracts from "./pages/admin/AMCContracts";
 
 function App() {
   return (
