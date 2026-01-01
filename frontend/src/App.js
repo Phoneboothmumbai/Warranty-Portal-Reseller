@@ -21,6 +21,8 @@ import Settings from "./pages/admin/Settings";
 import MasterData from "./pages/admin/MasterData";
 import ServiceHistory from "./pages/admin/ServiceHistory";
 import AMCContracts from "./pages/admin/AMCContracts";
+import Sites from "./pages/admin/Sites";
+import Deployments from "./pages/admin/Deployments";
 
 function App() {
   return (
