@@ -186,19 +186,24 @@ const AdminLayout = () => {
         
         {/* Desktop Header */}
         <header className="hidden lg:flex items-center justify-between bg-white border-b border-slate-100 px-8 py-4 sticky top-0 z-30">
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <a href="/" className="hover:text-slate-700">Portal</a>
-            <ChevronRight className="h-3 w-3" />
-            <span className="text-slate-900 font-medium">{currentPage}</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <a href="/" className="hover:text-slate-700">Portal</a>
+              <ChevronRight className="h-3 w-3" />
+              <span className="text-slate-900 font-medium">{currentPage}</span>
+            </div>
           </div>
-          <a 
-            href="/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-sm text-slate-500 hover:text-[#0F62FE] transition-colors"
-          >
-            View Public Portal →
-          </a>
+          <div className="flex items-center gap-4">
+            <UniversalSearch />
+            <a 
+              href="/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-sm text-slate-500 hover:text-[#0F62FE] transition-colors"
+            >
+              View Public Portal →
+            </a>
+          </div>
         </header>
 
         {/* Page Content */}
