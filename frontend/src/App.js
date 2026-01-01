@@ -49,6 +49,8 @@ function App() {
                 <Route path="parts" element={<Parts />} />
                 <Route path="amc" element={<AMCManagement />} />
                 <Route path="amc-contracts" element={<AMCContracts />} />
+                <Route path="sites" element={<Sites />} />
+                <Route path="deployments" element={<Deployments />} />
                 <Route path="service-history" element={<ServiceHistory />} />
                 <Route path="master-data" element={<MasterData />} />
                 <Route path="settings" element={<Settings />} />
