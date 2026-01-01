@@ -435,6 +435,98 @@ class AMCUpdate(BaseModel):
     end_date: Optional[str] = None
     notes: Optional[str] = None
 
+# ==================== SITE / LOCATION ====================
+
+class Site(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
+    name: str  # e.g., "Wadhwa 1620 – Mulund"
+    site_type: str = "office"  # office, warehouse, site_project, branch
+    address: Optional[str] = None
+    city: Optional[str] = None
+    primary_contact_name: Optional[str] = None
+    contact_number: Optional[str] = None
+    contact_email: Optional[str] = None
+    notes: Optional[str] = None
+    is_deleted: bool = False
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class SiteCreate(BaseModel):
+    company_id: str
+    name: str
+    site_type: str = "office"
+    address: Optional[str] = None
+    city: Optional[str] = None
+    primary_contact_name: Optional[str] = None
+    contact_number: Optional[str] = None
+    contact_email: Optional[str] = None
+    notes: Optional[str] = None
+
+class SiteUpdate(BaseModel):
+    name: Optional[str] = None
+    site_type: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    primary_contact_name: Optional[str] = None
+    contact_number: Optional[str] = None
+    contact_email: Optional[str] = None
+    notes: Optional[str] = None
+
+# ==================== DEPLOYMENT / INSTALLATION ====================
+
+class DeploymentItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    item_type: str  # device, infrastructure, software, subscription
+    category: str  # CCTV Camera, NVR, Access Point, Switch, Speaker, Computer, Software License, etc.
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    quantity: int = 1
+    is_serialized: bool = False
+    serial_numbers: List[str] = []  # Multiple serial numbers for serialized items
+    zone_location: Optional[str] = None  # Floor 3 – Reception
+    installation_date: Optional[str] = None
+    warranty_start_date: Optional[str] = None
+    warranty_end_date: Optional[str] = None
+    warranty_type: Optional[str] = None  # manufacturer, installer, amc_linked
+    amc_contract_id: Optional[str] = None
+    notes: Optional[str] = None
+    # Auto-created device IDs for serialized items
+    linked_device_ids: List[str] = []
+
+class Deployment(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
+    site_id: str
+    name: str  # e.g., "Phase 1 Infra Deployment"
+    deployment_date: str
+    installed_by: Optional[str] = None  # Internal / Vendor name
+    notes: Optional[str] = None
+    items: List[dict] = []  # List of DeploymentItem dicts
+    is_deleted: bool = False
+    created_by: str
+    created_by_name: str
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class DeploymentCreate(BaseModel):
+    company_id: str
+    site_id: str
+    name: str
+    deployment_date: str
+    installed_by: Optional[str] = None
+    notes: Optional[str] = None
+    items: List[dict] = []
+
+class DeploymentUpdate(BaseModel):
+    name: Optional[str] = None
+    deployment_date: Optional[str] = None
+    installed_by: Optional[str] = None
+    notes: Optional[str] = None
+    items: Optional[List[dict]] = None
+
 # ==================== AUDIT LOG (Hidden) ====================
 
 class AuditLog(BaseModel):
