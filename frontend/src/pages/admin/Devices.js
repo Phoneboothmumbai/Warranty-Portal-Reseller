@@ -668,18 +668,6 @@ const Devices = () => {
                 />
               </div>
               <div>
-                <label className="form-label">Warranty End Date</label>
-                <input
-                  type="date"
-                  value={formData.warranty_end_date}
-                  onChange={(e) => setFormData({ ...formData, warranty_end_date: e.target.value })}
-                  className="form-input"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
                 <label className="form-label">Vendor</label>
                 <input
                   type="text"
@@ -689,6 +677,20 @@ const Devices = () => {
                   placeholder="Supplier name"
                 />
               </div>
+            </div>
+            
+            {/* Warranty Date with Dual Mode Input */}
+            <div className="p-4 bg-slate-50 rounded-lg">
+              <DateDurationInput
+                label="Warranty Coverage"
+                startDate={formData.purchase_date}
+                endDate={formData.warranty_end_date}
+                onEndDateChange={(date) => setFormData({ ...formData, warranty_end_date: date })}
+                defaultMode="duration"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="form-label">Location</label>
                 <input
@@ -699,26 +701,27 @@ const Devices = () => {
                   placeholder="Office, Room, etc."
                 />
               </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="form-label">Condition</label>
-                <select
+                <SmartSelect
                   value={formData.condition}
-                  onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-                  className="form-select"
-                >
-                  {conditions.length > 0 ? conditions.map(c => (
-                    <option key={c.id} value={c.code?.toLowerCase() || c.name.toLowerCase()}>{c.name}</option>
-                  )) : (
-                    <>
-                      <option value="new">New</option>
-                      <option value="good">Good</option>
-                      <option value="fair">Fair</option>
-                      <option value="poor">Poor</option>
-                    </>
-                  )}
+                  onValueChange={(value) => setFormData({ ...formData, condition: value })}
+                  placeholder="Select Condition"
+                  searchPlaceholder="Search..."
+                  options={conditions.length > 0 
+                    ? conditions.map(c => ({ id: c.code?.toLowerCase() || c.name.toLowerCase(), name: c.name, label: c.name }))
+                    : [
+                        { id: 'new', name: 'New', label: 'New' },
+                        { id: 'good', name: 'Good', label: 'Good' },
+                        { id: 'fair', name: 'Fair', label: 'Fair' },
+                        { id: 'poor', name: 'Poor', label: 'Poor' }
+                      ]
+                  }
+                  displayKey="label"
+                  valueKey="id"
+                />
+              </div>
+            </div>
                 </select>
               </div>
               <div>
