@@ -632,6 +632,157 @@ class WarrantyPortalTester:
         
         return success
 
+    def test_amc_contracts_v2_crud(self):
+        """Test AMC Contracts v2 CRUD operations"""
+        self.log("\n=== Testing AMC Contracts v2 CRUD ===")
+        
+        if not self.test_data['company_id']:
+            self.log("❌ No company ID available for AMC contracts tests")
+            return False
+        
+        # List all AMC contracts (should be empty initially)
+        success, response = self.run_test("List AMC Contracts", "GET", "admin/amc-contracts", 200)
+        if not success:
+            return False
+        
+        # Create new AMC contract
+        contract_data = {
+            "company_id": self.test_data['company_id'],
+            "name": "Test AMC 2025-26",
+            "amc_type": "comprehensive",
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31",
+            "coverage_includes": {
+                "onsite_support": True,
+                "remote_support": True,
+                "preventive_maintenance": True
+            },
+            "exclusions": {
+                "hardware_parts": True,
+                "consumables": True
+            },
+            "asset_mapping": {
+                "mapping_type": "all_company",
+                "selected_asset_ids": [],
+                "selected_device_types": []
+            }
+        }
+        
+        success, response = self.run_test("Create AMC Contract", "POST", "admin/amc-contracts", 200, contract_data)
+        if not success:
+            return False
+        
+        contract_id = response.get('id')
+        self.test_data['amc_contract_id'] = contract_id
+        
+        # Verify contract has computed status
+        if 'status' not in response:
+            self.log("❌ AMC contract response missing computed status")
+            return False
+        
+        # Get specific AMC contract with covered assets
+        success, response = self.run_test("Get AMC Contract Details", "GET", f"admin/amc-contracts/{contract_id}", 200)
+        if not success:
+            return False
+        
+        # Verify response structure
+        required_fields = ['covered_assets', 'covered_assets_count', 'usage_history', 'usage_stats']
+        for field in required_fields:
+            if field not in response:
+                self.log(f"❌ Missing field '{field}' in AMC contract details")
+                return False
+        
+        # Update AMC contract
+        update_data = {
+            "name": "Updated Test AMC 2025-26",
+            "internal_notes": "Updated contract for testing"
+        }
+        
+        success, _ = self.run_test("Update AMC Contract", "PUT", f"admin/amc-contracts/{contract_id}", 200, update_data)
+        
+        return success
+
+    def test_amc_coverage_check(self):
+        """Test AMC coverage check for devices"""
+        self.log("\n=== Testing AMC Coverage Check ===")
+        
+        if not self.test_data['device_id']:
+            self.log("❌ No device ID available for coverage check")
+            return False
+        
+        # Check AMC coverage for device
+        success, response = self.run_test("Check AMC Coverage", "GET", f"admin/amc-contracts/check-coverage/{self.test_data['device_id']}", 200)
+        if not success:
+            return False
+        
+        # Verify response structure
+        required_fields = ['device_id', 'device_info', 'is_covered', 'active_contracts']
+        for field in required_fields:
+            if field not in response:
+                self.log(f"❌ Missing field '{field}' in coverage check response")
+                return False
+        
+        # If we created an AMC contract for all company devices, this should be covered
+        if self.test_data.get('amc_contract_id') and not response.get('is_covered'):
+            self.log("⚠️  Device should be covered by AMC contract but shows as not covered")
+        
+        return success
+
+    def test_companies_without_amc(self):
+        """Test companies without AMC endpoint"""
+        self.log("\n=== Testing Companies Without AMC ===")
+        
+        # Get companies without active AMC
+        success, response = self.run_test("Companies Without AMC", "GET", "admin/companies-without-amc", 200)
+        if not success:
+            return False
+        
+        # Verify response is a list
+        if not isinstance(response, list):
+            self.log("❌ Companies without AMC response should be a list")
+            return False
+        
+        # If response has items, verify structure
+        if len(response) > 0:
+            required_fields = ['id', 'name', 'contact_email']
+            for field in required_fields:
+                if field not in response[0]:
+                    self.log(f"❌ Missing field '{field}' in companies without AMC response")
+                    return False
+        
+        return success
+
+    def test_dashboard_alerts_with_amc_contracts(self):
+        """Test Dashboard Alerts API with AMC contracts alerts"""
+        self.log("\n=== Testing Dashboard Alerts with AMC Contracts ===")
+        
+        # Test dashboard alerts endpoint
+        success, response = self.run_test("Dashboard Alerts with AMC Contracts", "GET", "admin/dashboard/alerts", 200)
+        
+        if success:
+            # Verify response structure includes new AMC contract fields
+            required_fields = [
+                'warranty_expiring_7_days', 
+                'warranty_expiring_15_days', 
+                'warranty_expiring_30_days',
+                'amc_expiring_7_days',
+                'amc_expiring_15_days',
+                'amc_expiring_30_days',
+                'amc_contracts_expiring_7_days',
+                'amc_contracts_expiring_15_days',
+                'amc_contracts_expiring_30_days',
+                'companies_without_amc',
+                'devices_in_repair'
+            ]
+            for field in required_fields:
+                if field not in response:
+                    self.log(f"❌ Missing field '{field}' in dashboard alerts response")
+                    return False
+            
+            self.log("✅ Dashboard alerts structure with AMC contracts is valid")
+        
+        return success
+
     def run_all_tests(self):
         """Run all tests in sequence"""
         self.log("🚀 Starting Warranty Portal API Tests")
