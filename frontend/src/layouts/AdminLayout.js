@@ -16,7 +16,8 @@ const navItems = [
   { path: '/admin/devices', label: 'Devices', icon: Laptop },
   { path: '/admin/parts', label: 'Parts', icon: Wrench },
   { path: '/admin/service-history', label: 'Service History', icon: History },
-  { path: '/admin/amc', label: 'AMC', icon: FileCheck },
+  { path: '/admin/amc-contracts', label: 'AMC Contracts', icon: FileText },
+  { path: '/admin/amc', label: 'AMC (Legacy)', icon: FileCheck },
   { path: '/admin/master-data', label: 'Master Data', icon: Database },
   { path: '/admin/settings', label: 'Settings', icon: Settings },
 ];
