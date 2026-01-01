@@ -410,6 +410,227 @@ class WarrantyPortalTester:
         
         return success
 
+    def test_master_data_crud(self):
+        """Test Master Data CRUD operations"""
+        self.log("\n=== Testing Master Data CRUD ===")
+        
+        # Test getting all masters
+        success, response = self.run_test("List All Masters", "GET", "admin/masters", 200)
+        if not success:
+            return False
+        
+        # Test getting masters by type
+        success, _ = self.run_test("List Device Types", "GET", "admin/masters?master_type=device_type", 200)
+        if not success:
+            return False
+        
+        success, _ = self.run_test("List Brands", "GET", "admin/masters?master_type=brand", 200)
+        if not success:
+            return False
+        
+        success, _ = self.run_test("List Service Types", "GET", "admin/masters?master_type=service_type", 200)
+        if not success:
+            return False
+        
+        # Create a new master item (Brand)
+        master_data = {
+            "type": "brand",
+            "name": f"Samsung Test {datetime.now().strftime('%H%M%S')}",
+            "code": f"SAMSUNG_TEST_{datetime.now().strftime('%H%M%S')}",
+            "description": "Test brand for warranty portal",
+            "is_active": True,
+            "sort_order": 50
+        }
+        
+        success, response = self.run_test("Create Master Item", "POST", "admin/masters", 200, master_data)
+        if not success:
+            return False
+        
+        master_id = response.get('id')
+        self.test_data['master_id'] = master_id
+        
+        # Update master item
+        update_data = {
+            "description": "Updated test brand description",
+            "sort_order": 60
+        }
+        
+        success, _ = self.run_test("Update Master Item", "PUT", f"admin/masters/{master_id}", 200, update_data)
+        if not success:
+            return False
+        
+        # Disable master item (soft delete)
+        success, _ = self.run_test("Disable Master Item", "DELETE", f"admin/masters/{master_id}", 200)
+        
+        return success
+
+    def test_service_history_crud(self):
+        """Test Service History CRUD operations"""
+        self.log("\n=== Testing Service History CRUD ===")
+        
+        if not self.test_data['device_id']:
+            self.log("❌ No device ID available for service history tests")
+            return False
+        
+        # Create service record
+        service_data = {
+            "device_id": self.test_data['device_id'],
+            "service_date": "2024-12-15",
+            "service_type": "repair",
+            "problem_reported": "Laptop not booting properly",
+            "action_taken": "Replaced faulty RAM module and updated BIOS",
+            "parts_involved": [
+                {
+                    "part_name": "RAM",
+                    "old_part": "8GB DDR4",
+                    "new_part": "16GB DDR4",
+                    "warranty_started": "2024-12-15"
+                }
+            ],
+            "warranty_impact": "started",
+            "technician_name": "John Smith",
+            "ticket_id": f"TKT{datetime.now().strftime('%Y%m%d%H%M%S')}",
+            "notes": "Customer reported slow performance. Diagnosed RAM issue."
+        }
+        
+        success, response = self.run_test("Create Service Record", "POST", "admin/services", 200, service_data)
+        if not success:
+            return False
+        
+        service_id = response.get('id')
+        self.test_data['service_id'] = service_id
+        
+        # List all services
+        success, _ = self.run_test("List All Services", "GET", "admin/services", 200)
+        if not success:
+            return False
+        
+        # List services for specific device
+        success, _ = self.run_test("List Device Services", "GET", f"admin/services?device_id={self.test_data['device_id']}", 200)
+        if not success:
+            return False
+        
+        # Get specific service
+        success, _ = self.run_test("Get Service Record", "GET", f"admin/services/{service_id}", 200)
+        if not success:
+            return False
+        
+        # Update service record
+        update_data = {
+            "notes": "Updated service notes - customer satisfied with repair",
+            "warranty_impact": "extended"
+        }
+        
+        success, _ = self.run_test("Update Service Record", "PUT", f"admin/services/{service_id}", 200, update_data)
+        
+        return success
+
+    def test_dashboard_alerts(self):
+        """Test Dashboard Alerts API"""
+        self.log("\n=== Testing Dashboard Alerts ===")
+        
+        # Test dashboard alerts endpoint
+        success, response = self.run_test("Dashboard Alerts", "GET", "admin/dashboard/alerts", 200)
+        
+        if success:
+            # Verify response structure
+            required_fields = [
+                'warranty_expiring_7_days', 
+                'warranty_expiring_15_days', 
+                'warranty_expiring_30_days',
+                'amc_expiring_7_days',
+                'amc_expiring_15_days',
+                'amc_expiring_30_days',
+                'devices_in_repair'
+            ]
+            for field in required_fields:
+                if field not in response:
+                    self.log(f"❌ Missing field '{field}' in dashboard alerts response")
+                    return False
+            
+            self.log("✅ Dashboard alerts structure is valid")
+        
+        return success
+
+    def test_device_timeline(self):
+        """Test Device Timeline API"""
+        self.log("\n=== Testing Device Timeline ===")
+        
+        if not self.test_data['device_id']:
+            self.log("❌ No device ID available for timeline tests")
+            return False
+        
+        # Test device timeline
+        success, response = self.run_test("Device Timeline", "GET", f"admin/devices/{self.test_data['device_id']}/timeline", 200)
+        
+        if success:
+            # Verify response is a list
+            if not isinstance(response, list):
+                self.log("❌ Timeline response should be a list")
+                return False
+            
+            # Check if timeline has entries (should have at least purchase event)
+            if len(response) == 0:
+                self.log("❌ Timeline should have at least one entry")
+                return False
+            
+            # Verify timeline entry structure
+            for entry in response:
+                required_fields = ['type', 'date', 'title', 'description']
+                for field in required_fields:
+                    if field not in entry:
+                        self.log(f"❌ Missing field '{field}' in timeline entry")
+                        return False
+            
+            self.log("✅ Device timeline structure is valid")
+        
+        return success
+
+    def test_admin_login_with_demo_credentials(self):
+        """Test admin login with demo credentials from review request"""
+        self.log("\n=== Testing Admin Login with Demo Credentials ===")
+        
+        # First, create the demo admin if it doesn't exist
+        demo_admin_data = {
+            "name": "Demo Admin",
+            "email": "admin@demo.com",
+            "password": "admin123"
+        }
+        
+        # Try to create demo admin (might fail if already exists, that's OK)
+        self.run_test("Create Demo Admin", "POST", "auth/setup", 200, demo_admin_data)
+        
+        # Login with demo credentials
+        login_data = {
+            "email": "admin@demo.com",
+            "password": "admin123"
+        }
+        
+        success, response = self.run_test("Demo Admin Login", "POST", "auth/login", 200, login_data)
+        if not success:
+            return False
+        
+        demo_token = response.get('access_token')
+        if not demo_token:
+            self.log("❌ No access token received for demo admin")
+            return False
+        
+        # Store original token and use demo token for subsequent tests
+        original_token = self.token
+        self.token = demo_token
+        
+        # Test auth/me endpoint with demo credentials
+        success, response = self.run_test("Get Demo Admin Info", "GET", "auth/me", 200)
+        if success:
+            if response.get('email') != 'admin@demo.com':
+                self.log("❌ Demo admin email mismatch")
+                success = False
+        
+        # Restore original token
+        self.token = original_token
+        
+        return success
+
     def run_all_tests(self):
         """Run all tests in sequence"""
         self.log("🚀 Starting Warranty Portal API Tests")
