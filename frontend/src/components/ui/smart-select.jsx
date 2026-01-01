@@ -218,7 +218,7 @@ const SmartSelect = React.forwardRef((
                       {createLabel}
                       {searchQuery && (
                         <span className="ml-1 text-muted-foreground">
-                          "{searchQuery}"
+                          &ldquo;{searchQuery}&rdquo;
                         </span>
                       )}
                     </CommandItem>
