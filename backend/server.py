@@ -712,6 +712,11 @@ async def seed_default_masters():
         {"type": "brand", "name": "TP-Link", "code": "TPLINK", "sort_order": 13},
         {"type": "brand", "name": "APC", "code": "APC", "sort_order": 14},
         {"type": "brand", "name": "Other", "code": "OTHER", "sort_order": 99},
+        
+        # Duration Units (for warranty/AMC/license calculations)
+        {"type": "duration_unit", "name": "Days", "code": "DAYS", "description": "Calendar days", "sort_order": 1},
+        {"type": "duration_unit", "name": "Months", "code": "MONTHS", "description": "Calendar months", "sort_order": 2},
+        {"type": "duration_unit", "name": "Years", "code": "YEARS", "description": "Calendar years", "sort_order": 3},
     ]
     
     for item in defaults:
