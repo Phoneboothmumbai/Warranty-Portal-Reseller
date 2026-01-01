@@ -1982,6 +1982,52 @@ async def get_dashboard_alerts(admin: dict = Depends(get_current_admin)):
         elif 15 < days <= 30:
             alerts["amc_expiring_30_days"].append(alert_item)
     
+    # AMC Contract (v2) alerts
+    alerts["amc_contracts_expiring_7_days"] = []
+    alerts["amc_contracts_expiring_15_days"] = []
+    alerts["amc_contracts_expiring_30_days"] = []
+    alerts["companies_without_amc"] = []
+    
+    contracts = await db.amc_contracts.find({"is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
+    for contract in contracts:
+        days = days_until_expiry(contract.get("end_date", ""))
+        company = await db.companies.find_one({"id": contract.get("company_id")}, {"_id": 0, "name": 1})
+        
+        alert_item = {
+            "contract_id": contract.get("id"),
+            "contract_name": contract.get("name"),
+            "company_id": contract.get("company_id"),
+            "company_name": company.get("name") if company else "Unknown",
+            "amc_type": contract.get("amc_type"),
+            "expiry_date": contract.get("end_date"),
+            "days_remaining": days
+        }
+        
+        if 0 < days <= 7:
+            alerts["amc_contracts_expiring_7_days"].append(alert_item)
+        elif 7 < days <= 15:
+            alerts["amc_contracts_expiring_15_days"].append(alert_item)
+        elif 15 < days <= 30:
+            alerts["amc_contracts_expiring_30_days"].append(alert_item)
+    
+    # Companies without any active AMC contract
+    companies = await db.companies.find({"is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
+    for company in companies:
+        has_active_contract = False
+        for contract in contracts:
+            if contract.get("company_id") == company["id"]:
+                status = get_amc_status(contract.get("start_date", ""), contract.get("end_date", ""))
+                if status == "active":
+                    has_active_contract = True
+                    break
+        
+        if not has_active_contract:
+            alerts["companies_without_amc"].append({
+                "company_id": company["id"],
+                "company_name": company.get("name"),
+                "contact_email": company.get("contact_email")
+            })
+    
     return alerts
 
 # Include the router
