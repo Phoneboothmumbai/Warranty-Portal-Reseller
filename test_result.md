@@ -217,6 +217,42 @@ backend:
         agent: "testing"
         comment: "✅ Dashboard Alerts API enhanced with AMC Contracts v2 alerts. Now includes amc_contracts_expiring_7_days, amc_contracts_expiring_15_days, amc_contracts_expiring_30_days, and companies_without_amc fields. All alert types working correctly."
 
+  - task: "Sites CRUD APIs"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Sites CRUD APIs fully functional. Tested: POST /api/admin/sites (create site), GET /api/admin/sites (list all), GET /api/admin/sites/{id} (get details), PUT /api/admin/sites/{id} (update). All endpoints working correctly with proper data structure including company_id, name, site_type, address, city, contact details."
+
+  - task: "Deployments CRUD APIs"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Deployments CRUD APIs fully functional. Tested: POST /api/admin/deployments (create with items), GET /api/admin/deployments (list all), GET /api/admin/deployments/{id} (get details), PUT /api/admin/deployments/{id} (update). Successfully created deployment with 2 items (4 CCTV cameras + 1 NVR) with proper serialization and zone locations."
+
+  - task: "Device Auto-Creation from Deployments"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Device Auto-Creation working perfectly. When deployment created with 5 serialized items (CAM001-CAM004, NVR001), system automatically created 5 corresponding device records with proper company_id, serial_number, device_type, brand, and model populated. All auto-created devices verified successfully."
+
 frontend:
   - task: "Admin Login & Auth Flow"
     implemented: true
