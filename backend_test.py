@@ -21,7 +21,9 @@ class WarrantyPortalTester:
             'amc_contract_id': None,
             'service_id': None,
             'master_id': None,
-            'serial_number': None
+            'serial_number': None,
+            'site_id': None,
+            'deployment_id': None
         }
 
     def log(self, message):
