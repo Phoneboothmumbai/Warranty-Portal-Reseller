@@ -642,14 +642,19 @@ class WarrantyPortalTester:
         tests = [
             ("Basic Endpoints", self.test_basic_endpoints),
             ("Admin Setup & Auth", self.test_admin_setup_and_auth),
+            ("Demo Admin Login", self.test_admin_login_with_demo_credentials),
+            ("Master Data CRUD", self.test_master_data_crud),
             ("Company CRUD", self.test_company_crud),
             ("User CRUD", self.test_user_crud),
             ("Device CRUD", self.test_device_crud),
+            ("Service History CRUD", self.test_service_history_crud),
             ("Parts CRUD", self.test_parts_crud),
             ("AMC CRUD", self.test_amc_crud),
+            ("Device Timeline", self.test_device_timeline),
             ("Warranty Search", self.test_warranty_search),
             ("PDF Generation", self.test_pdf_generation),
             ("Dashboard Stats", self.test_dashboard_stats),
+            ("Dashboard Alerts", self.test_dashboard_alerts),
             ("Settings CRUD", self.test_settings_crud)
         ]
         
