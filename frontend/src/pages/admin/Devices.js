@@ -485,61 +485,129 @@ const Devices = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="form-label">Company *</label>
-                <select
+                <SmartSelect
                   value={formData.company_id}
-                  onChange={(e) => handleCompanyChange(e.target.value)}
-                  className="form-select"
+                  onValueChange={(value) => handleCompanyChange(value)}
+                  placeholder="Select Company"
+                  searchPlaceholder="Search companies..."
+                  emptyText="No companies found"
+                  fetchOptions={async (q) => {
+                    const res = await axios.get(`${API}/admin/companies`, {
+                      params: { q, limit: 20 },
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    return res.data;
+                  }}
+                  displayKey="name"
+                  valueKey="id"
+                  allowCreate
+                  createLabel="Add New Company"
+                  renderCreateForm={({ initialValue, onSuccess, onCancel }) => (
+                    <QuickCreateCompany
+                      initialValue={initialValue}
+                      onSuccess={onSuccess}
+                      onCancel={onCancel}
+                      token={token}
+                    />
+                  )}
                   data-testid="device-company-select"
-                >
-                  <option value="">Select Company</option>
-                  {companies.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
                 <label className="form-label">Assigned User</label>
-                <select
+                <SmartSelect
                   value={formData.assigned_user_id}
-                  onChange={(e) => setFormData({ ...formData, assigned_user_id: e.target.value })}
-                  className="form-select"
+                  onValueChange={(value) => setFormData({ ...formData, assigned_user_id: value })}
+                  placeholder={!formData.company_id ? "Select company first" : "Select User (optional)"}
+                  searchPlaceholder="Search users..."
+                  emptyText="No users found"
                   disabled={!formData.company_id}
-                >
-                  <option value="">Unassigned</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
-                </select>
+                  fetchOptions={formData.company_id ? async (q) => {
+                    const res = await axios.get(`${API}/admin/users`, {
+                      params: { q, company_id: formData.company_id, limit: 20 },
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    return res.data;
+                  } : undefined}
+                  options={!formData.company_id ? [] : undefined}
+                  displayKey="name"
+                  valueKey="id"
+                  allowCreate={!!formData.company_id}
+                  createLabel="Add New User"
+                  renderCreateForm={formData.company_id ? ({ initialValue, onSuccess, onCancel }) => (
+                    <QuickCreateUser
+                      initialValue={initialValue}
+                      companyId={formData.company_id}
+                      onSuccess={onSuccess}
+                      onCancel={onCancel}
+                      token={token}
+                    />
+                  ) : undefined}
+                />
               </div>
             </div>
             
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="form-label">Device Type *</label>
-                <select
+                <SmartSelect
                   value={formData.device_type}
-                  onChange={(e) => setFormData({ ...formData, device_type: e.target.value })}
-                  className="form-select"
-                >
-                  <option value="">Select Type</option>
-                  {deviceTypes.map(t => (
-                    <option key={t.id} value={t.name}>{t.name}</option>
-                  ))}
-                </select>
+                  onValueChange={(value) => setFormData({ ...formData, device_type: value })}
+                  placeholder="Select Type"
+                  searchPlaceholder="Search types..."
+                  emptyText="No types found"
+                  fetchOptions={async (q) => {
+                    const res = await axios.get(`${API}/masters/public`, {
+                      params: { master_type: 'device_type', q, limit: 20 }
+                    });
+                    return res.data;
+                  }}
+                  displayKey="name"
+                  valueKey="name"
+                  allowCreate
+                  createLabel="Add New Type"
+                  renderCreateForm={({ initialValue, onSuccess, onCancel }) => (
+                    <QuickCreateMaster
+                      initialValue={initialValue}
+                      masterType="device_type"
+                      masterLabel="Device Type"
+                      onSuccess={(item) => onSuccess({ ...item, id: item.name })}
+                      onCancel={onCancel}
+                      token={token}
+                    />
+                  )}
+                />
               </div>
               <div>
                 <label className="form-label">Brand *</label>
-                <select
+                <SmartSelect
                   value={formData.brand}
-                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                  className="form-select"
+                  onValueChange={(value) => setFormData({ ...formData, brand: value })}
+                  placeholder="Select Brand"
+                  searchPlaceholder="Search brands..."
+                  emptyText="No brands found"
+                  fetchOptions={async (q) => {
+                    const res = await axios.get(`${API}/masters/public`, {
+                      params: { master_type: 'brand', q, limit: 20 }
+                    });
+                    return res.data;
+                  }}
+                  displayKey="name"
+                  valueKey="name"
+                  allowCreate
+                  createLabel="Add New Brand"
+                  renderCreateForm={({ initialValue, onSuccess, onCancel }) => (
+                    <QuickCreateMaster
+                      initialValue={initialValue}
+                      masterType="brand"
+                      masterLabel="Brand"
+                      onSuccess={(item) => onSuccess({ ...item, id: item.name })}
+                      onCancel={onCancel}
+                      token={token}
+                    />
+                  )}
                   data-testid="device-brand-select"
-                >
-                  <option value="">Select Brand</option>
-                  {brands.map(b => (
-                    <option key={b.id} value={b.name}>{b.name}</option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
                 <label className="form-label">Model *</label>
