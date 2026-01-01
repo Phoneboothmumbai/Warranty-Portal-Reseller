@@ -1091,6 +1091,30 @@ async def seed_masters(admin: dict = Depends(get_current_admin)):
     await seed_default_masters()
     return {"message": "Default masters seeded"}
 
+@api_router.post("/admin/masters/quick-create")
+async def quick_create_master(item: MasterItemCreate, admin: dict = Depends(get_current_admin)):
+    """Quick create master item (for inline creation from dropdowns)"""
+    # Check for duplicate
+    existing = await db.masters.find_one({"type": item.type, "name": item.name}, {"_id": 0})
+    if existing:
+        # Return existing item instead of error (idempotent)
+        return existing
+    
+    # Get next sort order
+    last = await db.masters.find_one({"type": item.type}, {"_id": 0}, sort=[("sort_order", -1)])
+    next_order = (last.get("sort_order", 0) + 1) if last else 1
+    
+    master_data = item.model_dump()
+    master_data["sort_order"] = next_order
+    master = MasterItem(**master_data)
+    await db.masters.insert_one(master.model_dump())
+    await log_audit("master", master.id, "quick_create", {"data": item.model_dump()}, admin)
+    
+    result = master.model_dump()
+    # Add label for SmartSelect compatibility
+    result["label"] = result["name"]
+    return result
+
 # ==================== ADMIN ENDPOINTS - COMPANIES ====================
 
 @api_router.get("/admin/companies")
