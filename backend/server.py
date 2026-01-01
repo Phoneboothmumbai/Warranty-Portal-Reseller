@@ -1512,6 +1512,294 @@ async def delete_amc(amc_id: str, admin: dict = Depends(get_current_admin)):
     await log_audit("amc", amc_id, "delete", {"is_deleted": True}, admin)
     return {"message": "AMC archived"}
 
+# ==================== AMC V2 CONTRACTS (Enhanced) ====================
+
+def get_amc_status(start_date: str, end_date: str) -> str:
+    """Calculate AMC status based on dates"""
+    today = datetime.now(timezone.utc).date()
+    try:
+        start = datetime.fromisoformat(start_date.replace('Z', '+00:00')).date() if 'T' in start_date else datetime.strptime(start_date, '%Y-%m-%d').date()
+        end = datetime.fromisoformat(end_date.replace('Z', '+00:00')).date() if 'T' in end_date else datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        if today < start:
+            return "upcoming"
+        elif today > end:
+            return "expired"
+        else:
+            return "active"
+    except:
+        return "unknown"
+
+def get_days_until_expiry(end_date: str) -> Optional[int]:
+    """Calculate days until AMC expiry"""
+    today = datetime.now(timezone.utc).date()
+    try:
+        end = datetime.fromisoformat(end_date.replace('Z', '+00:00')).date() if 'T' in end_date else datetime.strptime(end_date, '%Y-%m-%d').date()
+        return (end - today).days
+    except:
+        return None
+
+@api_router.get("/admin/amc-contracts")
+async def list_amc_contracts(
+    company_id: Optional[str] = None,
+    status: Optional[str] = None,
+    admin: dict = Depends(get_current_admin)
+):
+    """List all AMC contracts with computed status"""
+    query = {"is_deleted": {"$ne": True}}
+    if company_id:
+        query["company_id"] = company_id
+    
+    contracts = await db.amc_contracts.find(query, {"_id": 0}).to_list(1000)
+    
+    # Compute status for each contract
+    result = []
+    for contract in contracts:
+        status_val = get_amc_status(contract.get("start_date", ""), contract.get("end_date", ""))
+        days_left = get_days_until_expiry(contract.get("end_date", ""))
+        
+        # Get company name
+        company = await db.companies.find_one({"id": contract.get("company_id")}, {"_id": 0, "name": 1})
+        
+        # Get usage stats
+        usage_count = await db.amc_usage.count_documents({"amc_contract_id": contract["id"]})
+        
+        contract["status"] = status_val
+        contract["days_until_expiry"] = days_left
+        contract["company_name"] = company.get("name") if company else "Unknown"
+        contract["usage_count"] = usage_count
+        
+        if status and status_val != status:
+            continue
+        result.append(contract)
+    
+    return result
+
+@api_router.post("/admin/amc-contracts")
+async def create_amc_contract(data: AMCContractCreate, admin: dict = Depends(get_current_admin)):
+    """Create new AMC contract"""
+    # Validate company exists
+    company = await db.companies.find_one({"id": data.company_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Build contract with defaults
+    contract_data = {
+        "company_id": data.company_id,
+        "name": data.name,
+        "amc_type": data.amc_type,
+        "start_date": data.start_date,
+        "end_date": data.end_date,
+        "coverage_includes": data.coverage_includes or AMCCoverageIncludes().model_dump(),
+        "exclusions": data.exclusions or AMCExclusions().model_dump(),
+        "entitlements": data.entitlements or AMCEntitlements().model_dump(),
+        "asset_mapping": data.asset_mapping or AMCAssetMapping().model_dump(),
+        "internal_notes": data.internal_notes,
+    }
+    
+    contract = AMCContract(**contract_data)
+    await db.amc_contracts.insert_one(contract.model_dump())
+    await log_audit("amc_contract", contract.id, "create", {"data": contract_data}, admin)
+    
+    result = contract.model_dump()
+    result["status"] = get_amc_status(result["start_date"], result["end_date"])
+    result["company_name"] = company.get("name")
+    return result
+
+@api_router.get("/admin/amc-contracts/{contract_id}")
+async def get_amc_contract(contract_id: str, admin: dict = Depends(get_current_admin)):
+    """Get single AMC contract with details"""
+    contract = await db.amc_contracts.find_one({"id": contract_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not contract:
+        raise HTTPException(status_code=404, detail="AMC Contract not found")
+    
+    # Compute status
+    contract["status"] = get_amc_status(contract.get("start_date", ""), contract.get("end_date", ""))
+    contract["days_until_expiry"] = get_days_until_expiry(contract.get("end_date", ""))
+    
+    # Get company details
+    company = await db.companies.find_one({"id": contract.get("company_id")}, {"_id": 0})
+    contract["company_name"] = company.get("name") if company else "Unknown"
+    
+    # Get covered assets based on mapping type
+    asset_mapping = contract.get("asset_mapping", {})
+    mapping_type = asset_mapping.get("mapping_type", "all_company")
+    
+    if mapping_type == "all_company":
+        assets = await db.devices.find(
+            {"company_id": contract["company_id"], "is_deleted": {"$ne": True}},
+            {"_id": 0}
+        ).to_list(1000)
+    elif mapping_type == "selected_assets":
+        asset_ids = asset_mapping.get("selected_asset_ids", [])
+        assets = await db.devices.find(
+            {"id": {"$in": asset_ids}, "is_deleted": {"$ne": True}},
+            {"_id": 0}
+        ).to_list(1000)
+    elif mapping_type == "device_types":
+        device_types = asset_mapping.get("selected_device_types", [])
+        assets = await db.devices.find(
+            {"company_id": contract["company_id"], "device_type": {"$in": device_types}, "is_deleted": {"$ne": True}},
+            {"_id": 0}
+        ).to_list(1000)
+    else:
+        assets = []
+    
+    contract["covered_assets"] = assets
+    contract["covered_assets_count"] = len(assets)
+    
+    # Get usage history
+    usage = await db.amc_usage.find({"amc_contract_id": contract_id}, {"_id": 0}).to_list(100)
+    contract["usage_history"] = usage
+    
+    # Calculate usage stats
+    onsite_count = len([u for u in usage if u.get("usage_type") == "onsite_visit"])
+    remote_count = len([u for u in usage if u.get("usage_type") == "remote_support"])
+    pm_count = len([u for u in usage if u.get("usage_type") == "preventive_maintenance"])
+    
+    contract["usage_stats"] = {
+        "onsite_visits_used": onsite_count,
+        "remote_support_used": remote_count,
+        "preventive_maintenance_used": pm_count
+    }
+    
+    return contract
+
+@api_router.put("/admin/amc-contracts/{contract_id}")
+async def update_amc_contract(contract_id: str, updates: AMCContractUpdate, admin: dict = Depends(get_current_admin)):
+    """Update AMC contract"""
+    existing = await db.amc_contracts.find_one({"id": contract_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="AMC Contract not found")
+    
+    update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No updates provided")
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    changes = {k: {"old": existing.get(k), "new": v} for k, v in update_data.items() if existing.get(k) != v}
+    
+    await db.amc_contracts.update_one({"id": contract_id}, {"$set": update_data})
+    await log_audit("amc_contract", contract_id, "update", changes, admin)
+    
+    result = await db.amc_contracts.find_one({"id": contract_id}, {"_id": 0})
+    result["status"] = get_amc_status(result.get("start_date", ""), result.get("end_date", ""))
+    return result
+
+@api_router.delete("/admin/amc-contracts/{contract_id}")
+async def delete_amc_contract(contract_id: str, admin: dict = Depends(get_current_admin)):
+    """Soft delete AMC contract"""
+    result = await db.amc_contracts.update_one({"id": contract_id}, {"$set": {"is_deleted": True}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="AMC Contract not found")
+    await log_audit("amc_contract", contract_id, "delete", {"is_deleted": True}, admin)
+    return {"message": "AMC Contract archived"}
+
+@api_router.post("/admin/amc-contracts/{contract_id}/usage")
+async def record_amc_usage(
+    contract_id: str,
+    usage_type: str = Query(..., description="onsite_visit, remote_support, preventive_maintenance"),
+    service_id: Optional[str] = None,
+    notes: Optional[str] = None,
+    admin: dict = Depends(get_current_admin)
+):
+    """Record usage against AMC contract"""
+    contract = await db.amc_contracts.find_one({"id": contract_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not contract:
+        raise HTTPException(status_code=404, detail="AMC Contract not found")
+    
+    usage = AMCUsageRecord(
+        amc_contract_id=contract_id,
+        service_id=service_id,
+        usage_type=usage_type,
+        usage_date=datetime.now(timezone.utc).isoformat(),
+        notes=notes
+    )
+    
+    await db.amc_usage.insert_one(usage.model_dump())
+    return usage.model_dump()
+
+@api_router.get("/admin/amc-contracts/check-coverage/{device_id}")
+async def check_amc_coverage(device_id: str, admin: dict = Depends(get_current_admin)):
+    """Check if a device is covered under any active AMC"""
+    device = await db.devices.find_one({"id": device_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    company_id = device.get("company_id")
+    device_type = device.get("device_type")
+    
+    # Find all active AMC contracts for this company
+    contracts = await db.amc_contracts.find(
+        {"company_id": company_id, "is_deleted": {"$ne": True}},
+        {"_id": 0}
+    ).to_list(100)
+    
+    covered_contracts = []
+    for contract in contracts:
+        status = get_amc_status(contract.get("start_date", ""), contract.get("end_date", ""))
+        if status != "active":
+            continue
+        
+        asset_mapping = contract.get("asset_mapping", {})
+        mapping_type = asset_mapping.get("mapping_type", "all_company")
+        
+        is_covered = False
+        if mapping_type == "all_company":
+            is_covered = True
+        elif mapping_type == "selected_assets":
+            is_covered = device_id in asset_mapping.get("selected_asset_ids", [])
+        elif mapping_type == "device_types":
+            is_covered = device_type in asset_mapping.get("selected_device_types", [])
+        
+        if is_covered:
+            covered_contracts.append({
+                "contract_id": contract["id"],
+                "contract_name": contract["name"],
+                "amc_type": contract.get("amc_type"),
+                "coverage_includes": contract.get("coverage_includes"),
+                "exclusions": contract.get("exclusions"),
+                "end_date": contract.get("end_date"),
+                "days_until_expiry": get_days_until_expiry(contract.get("end_date", ""))
+            })
+    
+    return {
+        "device_id": device_id,
+        "device_info": f"{device.get('brand')} {device.get('model')} ({device.get('serial_number')})",
+        "is_covered": len(covered_contracts) > 0,
+        "active_contracts": covered_contracts
+    }
+
+@api_router.get("/admin/companies-without-amc")
+async def get_companies_without_amc(admin: dict = Depends(get_current_admin)):
+    """Get list of companies without any active AMC"""
+    # Get all companies
+    companies = await db.companies.find({"is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
+    
+    companies_without_amc = []
+    for company in companies:
+        # Check if company has any active AMC
+        contracts = await db.amc_contracts.find(
+            {"company_id": company["id"], "is_deleted": {"$ne": True}},
+            {"_id": 0}
+        ).to_list(10)
+        
+        has_active_amc = False
+        for contract in contracts:
+            if get_amc_status(contract.get("start_date", ""), contract.get("end_date", "")) == "active":
+                has_active_amc = True
+                break
+        
+        if not has_active_amc:
+            companies_without_amc.append({
+                "id": company["id"],
+                "name": company.get("name"),
+                "contact_email": company.get("contact_email")
+            })
+    
+    return companies_without_amc
+
 # ==================== ADMIN ENDPOINTS - SETTINGS ====================
 
 @api_router.get("/admin/settings")
