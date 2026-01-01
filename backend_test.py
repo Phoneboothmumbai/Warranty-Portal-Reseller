@@ -1265,6 +1265,8 @@ class WarrantyPortalTester:
             ("AMC Contracts v2 CRUD", self.test_amc_contracts_v2_crud),
             ("AMC Coverage Check", self.test_amc_coverage_check),
             ("Companies Without AMC", self.test_companies_without_amc),
+            ("License CRUD APIs (Phase 2B)", self.test_license_crud_apis),
+            ("AMC Device Assignment APIs (Phase 2B)", self.test_amc_device_assignment_apis),
             ("Device Timeline", self.test_device_timeline),
             ("Warranty Search", self.test_warranty_search),
             ("PDF Generation", self.test_pdf_generation),
