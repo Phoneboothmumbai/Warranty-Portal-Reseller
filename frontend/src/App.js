@@ -23,6 +23,7 @@ import ServiceHistory from "./pages/admin/ServiceHistory";
 import AMCContracts from "./pages/admin/AMCContracts";
 import Sites from "./pages/admin/Sites";
 import Deployments from "./pages/admin/Deployments";
+import Licenses from "./pages/admin/Licenses";
 
 function App() {
   return (
@@ -51,6 +52,7 @@ function App() {
                 <Route path="amc-contracts" element={<AMCContracts />} />
                 <Route path="sites" element={<Sites />} />
                 <Route path="deployments" element={<Deployments />} />
+                <Route path="licenses" element={<Licenses />} />
                 <Route path="service-history" element={<ServiceHistory />} />
                 <Route path="master-data" element={<MasterData />} />
                 <Route path="settings" element={<Settings />} />
