@@ -261,6 +261,8 @@ class ServiceHistory(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     device_id: str
     company_id: str
+    site_id: Optional[str] = None  # Site reference
+    deployment_id: Optional[str] = None  # Deployment reference
     service_date: str
     service_type: str  # repair, part_replacement, inspection, amc_visit, preventive_maintenance, other
     problem_reported: Optional[str] = None
@@ -282,6 +284,8 @@ class ServiceHistory(BaseModel):
 
 class ServiceHistoryCreate(BaseModel):
     device_id: str
+    site_id: Optional[str] = None
+    deployment_id: Optional[str] = None
     service_date: str
     service_type: str
     problem_reported: Optional[str] = None
@@ -306,6 +310,8 @@ class ServiceHistoryUpdate(BaseModel):
     technician_name: Optional[str] = None
     ticket_id: Optional[str] = None
     notes: Optional[str] = None
+    site_id: Optional[str] = None
+    deployment_id: Optional[str] = None
     # AMC fields
     amc_contract_id: Optional[str] = None
     billing_type: Optional[str] = None
