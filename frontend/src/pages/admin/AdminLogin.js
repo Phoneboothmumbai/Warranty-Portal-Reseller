@@ -46,11 +46,21 @@ const AdminLogin = () => {
     try {
       await login(email, password);
       toast.success('Login successful');
-      navigate('/admin/dashboard');
+      
+      // Check for stored redirect path
+      const redirectPath = sessionStorage.getItem('redirectAfterLogin');
+      if (redirectPath) {
+        sessionStorage.removeItem('redirectAfterLogin');
+        navigate(redirectPath);
+      } else {
+        navigate('/admin/dashboard');
+      }
     } catch (error) {
       const message = error.response?.data?.detail || 'Login failed';
       if (message.includes('Invalid credentials')) {
         toast.error('Invalid email or password');
+      } else if (!error.response) {
+        toast.error('Network error. Please check your connection.');
       } else {
         toast.error(message);
       }
