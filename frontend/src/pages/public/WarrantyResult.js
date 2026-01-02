@@ -262,13 +262,41 @@ const WarrantyResult = () => {
                     </div>
                   )}
 
-                  {/* AMC Section */}
+                  {/* AMC Section - P0 Fix: Show AMC Contract with priority */}
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">
                       Service / AMC Coverage
                     </h3>
                     <div className="p-4 rounded-xl bg-slate-50 border border-slate-100" data-testid="amc-status">
-                      {data.amc ? (
+                      {/* Priority: AMC Contract > Legacy AMC > No Coverage */}
+                      {data.amc_contract ? (
+                        <>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                              <span className="font-medium text-slate-900">{data.amc_contract.name || 'AMC Contract'}</span>
+                            </div>
+                            <span className="badge-active">
+                              Active
+                            </span>
+                          </div>
+                          <div className="ml-8 text-sm space-y-2">
+                            <p className="text-slate-600">
+                              <span className="text-slate-500">Coverage Type:</span>{' '}
+                              <span className="font-medium capitalize">{data.amc_contract.amc_type || 'Standard'}</span>
+                            </p>
+                            <p className="text-slate-600">
+                              <span className="text-slate-500">Valid Until:</span>{' '}
+                              <span className="font-medium">{formatDate(data.amc_contract.coverage_end)}</span>
+                            </p>
+                            {data.coverage_source === 'amc_contract' && data.device?.device_warranty_active === false && (
+                              <p className="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded inline-block mt-2">
+                                ✓ Device protected under AMC even after original warranty expired
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      ) : data.amc ? (
                         <>
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-3">
