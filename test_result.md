@@ -1,156 +1,42 @@
-backend:
-  - task: "License CRUD APIs"
-    implemented: true
-    working: true
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "testing"
-        comment: "All License CRUD APIs working correctly. Tested create subscription/perpetual licenses, list with filters, get details, update, and expiring summary. All endpoints return proper format with 'label' field for SmartSelect and calculated 'status' field."
+# Test Results - P0 Architecture Fixes
 
-  - task: "AMC Device Assignment APIs"
-    implemented: true
-    working: true
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "testing"
-        comment: "All AMC Device Assignment APIs working correctly. Tested GET /api/admin/amc-contracts/{id}/devices, POST assign-device, POST bulk-assign/preview, POST bulk-assign/confirm. All endpoints return proper format with device details included."
+## Testing Scope
+Testing P0 Critical Data Architecture Fixes:
+1. Device API returns AMC status
+2. AMC Contract search by serial number
+3. Warranty Search respects AMC override rule
+4. Device List shows AMC status column
 
-  - task: "License Expiring Summary API"
-    implemented: true
-    working: true
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "testing"
-        comment: "License expiring summary API working correctly. Returns proper structure with total, perpetual, active, expiring_7_days, expiring_30_days, and expired fields."
+## Credentials
+- Admin Email: admin@demo.com
+- Admin Password: admin123
 
-  - task: "License Status Calculation"
-    implemented: true
-    working: true
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "testing"
-        comment: "License status calculation working correctly. Properly calculates active/expiring/expired status based on end_date and renewal_reminder_days."
+## Test Scenarios
 
-  - task: "AMC Device Assignment Validation"
-    implemented: true
-    working: true
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "testing"
-        comment: "AMC device assignment validation working correctly. Bulk assignment preview properly validates devices, checks for duplicates, wrong company assignments, and non-existent devices."
+### 1. Device List API with AMC Status
+- GET /api/admin/devices should return amc_status, amc_contract_name, amc_coverage_end for each device
 
-frontend:
-  - task: "Licenses Page Navigation"
-    implemented: true
-    working: true
-    file: "frontend/src/pages/admin/Licenses.js"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: "NA"
-        agent: "testing"
-        comment: "Frontend testing not performed as per system limitations. Only backend APIs tested."
-      - working: true
-        agent: "testing"
-        comment: "✅ Licenses page navigation working correctly. Page loads at /admin/licenses with proper authentication. All 5 stats cards displayed (Total, Perpetual, Active, Expiring Soon, Expired). Add License button functional and opens modal."
+### 2. Device Detail API with Full AMC Info
+- GET /api/admin/devices/{id} should include:
+  - amc_status (active/none/expired)
+  - amc_assignments array with full contract details
+  - active_amc with current coverage
 
-  - task: "License Stats Cards"
-    implemented: true
-    working: true
-    file: "frontend/src/pages/admin/Licenses.js"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: "NA"
-        agent: "testing"
-        comment: "Frontend testing not performed as per system limitations. Backend expiring summary API is working correctly."
-      - working: true
-        agent: "testing"
-        comment: "✅ License stats cards working perfectly. All 5 cards displayed: Total Licenses (3), Perpetual, Active, Expiring Soon (0), Expired (0). Cards properly fetch data from backend expiring summary API and display real-time statistics."
+### 3. AMC Contracts Search by Serial Number
+- GET /api/admin/amc-contracts?serial=XXX should find contracts that have this device assigned
 
-  - task: "SmartSelect for Company"
-    implemented: true
-    working: true
-    file: "frontend/src/components/ui/smart-select.jsx"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-      - working: "NA"
-        agent: "testing"
-        comment: "Frontend testing not performed as per system limitations. Backend companies API returns 'label' field for SmartSelect compatibility."
-      - working: true
-        agent: "testing"
-        comment: "✅ SmartSelect component working correctly. Searchable dropdown opens properly, includes search functionality, and integrates with companies API. Component supports async loading and inline company creation."
+### 4. Warranty Search AMC Override
+- GET /api/warranty/search?q=XXX should return:
+  - coverage_source (amc_contract | device_warranty)
+  - amc_contract object with name, type, dates
+  - warranty_active based on AMC override rule
 
-  - task: "DateDurationInput for License End"
-    implemented: true
-    working: true
-    file: "frontend/src/components/ui/date-duration-input.jsx"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-      - working: "NA"
-        agent: "testing"
-        comment: "Frontend testing not performed as per system limitations."
-      - working: true
-        agent: "testing"
-        comment: "✅ DateDurationInput component working perfectly. Provides dual mode input (End Date/Duration) with radio button toggle. Duration mode includes numeric input with Years/Months/Days dropdown. Calculates and displays end date automatically."
+### 5. Frontend - Devices Page
+- Table should show AMC column
+- Stats should show "With AMC" count
+- Filter by AMC status should work
 
-  - task: "Warranty Result Request Support Button"
-    implemented: true
-    working: true
-    file: "frontend/src/pages/public/WarrantyResult.js"
-    stuck_count: 0
-    priority: "low"
-    needs_retesting: false
-    status_history:
-      - working: "NA"
-        agent: "testing"
-        comment: "Frontend testing not performed as per system limitations."
-      - working: true
-        agent: "testing"
-        comment: "✅ Request Support button working correctly. Button appears next to Download PDF button with proper href to support.thegoodmen.in. URL includes all required parameters: source=warranty-portal, serial number, device_id, and company name. Opens in new tab with correct styling."
-
-metadata:
-  created_by: "testing_agent"
-  version: "1.0"
-  test_sequence: 1
-  run_ui: false
-
-test_plan:
-  current_focus:
-    - "License CRUD APIs"
-    - "AMC Device Assignment APIs"
-  stuck_tasks: []
-  test_all: false
-  test_priority: "high_first"
-
-agent_communication:
-  - agent: "testing"
-    message: "Phase 2B Core Modules backend testing completed successfully. All License CRUD APIs and AMC Device Assignment APIs are working correctly. License endpoints properly return 'label' field for SmartSelect compatibility and calculated 'status' field (active/expiring/expired). AMC assignment APIs include device details and proper validation for bulk operations. Frontend testing was not performed due to system limitations."
-  - agent: "testing"
-    message: "Phase 2B Frontend testing completed successfully! All frontend components are working correctly: 1) Licenses page loads with proper navigation and authentication 2) All 5 stats cards display real-time data 3) Add License modal opens with all required form fields 4) SmartSelect component for company selection works with search functionality 5) DateDurationInput provides dual mode (End Date/Duration) with automatic calculation 6) Warranty Result page displays Request Support button with correct href to support.thegoodmen.in including all required parameters. All UI components are properly implemented and functional."
+### 6. Frontend - Warranty Result Page
+- Should show AMC Contract details
+- Should show coverage type and dates
+- Request Support button should be visible
