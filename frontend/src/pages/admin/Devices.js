@@ -372,6 +372,7 @@ const Devices = () => {
                   <th>Serial / Asset</th>
                   <th>Company</th>
                   <th>Warranty</th>
+                  <th>AMC</th>
                   <th>Condition</th>
                   <th>Status</th>
                   <th className="w-16"></th>
