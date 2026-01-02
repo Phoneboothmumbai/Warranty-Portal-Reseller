@@ -425,6 +425,23 @@ const Devices = () => {
                         )}
                       </td>
                       <td>
+                        {/* AMC Status Column - P0 Fix */}
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          device.amc_status === 'active'
+                            ? 'bg-blue-50 text-blue-600'
+                            : device.amc_status === 'expired'
+                            ? 'bg-orange-50 text-orange-600'
+                            : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          {device.amc_status === 'active' ? 'Active' : device.amc_status === 'expired' ? 'Expired' : 'None'}
+                        </span>
+                        {device.amc_contract_name && (
+                          <p className="text-xs text-slate-500 mt-1 truncate max-w-[100px]" title={device.amc_contract_name}>
+                            {device.amc_contract_name}
+                          </p>
+                        )}
+                      </td>
+                      <td>
                         <span className="text-sm capitalize text-slate-600">{device.condition || '-'}</span>
                       </td>
                       <td>
