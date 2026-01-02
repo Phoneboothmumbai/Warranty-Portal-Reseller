@@ -21,6 +21,7 @@ const Devices = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCompany, setFilterCompany] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterAMC, setFilterAMC] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
@@ -53,7 +54,7 @@ const Devices = () => {
   useEffect(() => {
     fetchData();
     fetchMasterData();
-  }, [filterCompany, filterStatus]);
+  }, [filterCompany, filterStatus, filterAMC]);
 
   const fetchMasterData = async () => {
     try {
