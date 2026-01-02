@@ -92,6 +92,31 @@ Support multiple parts with different warranty periods for the same device.
 
 ## Phase 2 Roadmap (In Progress)
 
+### P0 - CRITICAL ARCHITECTURE FIXES ✅ COMPLETE (January 2026)
+
+**Core Data Model Fix - AMC-Device JOIN Relationship:**
+- [x] `amc_device_assignments` JOIN table properly integrated across all APIs
+- [x] Device List API returns `amc_status`, `amc_contract_name`, `amc_coverage_end`
+- [x] Device Detail API JOINs `amc_device_assignments` → `amc_contracts` with full details
+- [x] Device list table shows AMC column (Active/None/Expired badges)
+- [x] "With AMC" stats card on Devices page
+
+**AMC Serial Number Search:**
+- [x] `GET /api/admin/amc-contracts?serial=XXX&asset_tag=YYY`
+- [x] JOINs `amc_contracts` → `amc_device_assignments` → `devices`
+- [x] Search by serial number, asset tag, company
+
+**Warranty Search AMC Override Rule:**
+- [x] IF device has ACTIVE AMC → Show AMC coverage (ignore device warranty)
+- [x] ELSE → Show device warranty
+- [x] Returns `coverage_source` (amc_contract | legacy_amc | device_warranty)
+- [x] Returns full `amc_contract` object with name, type, dates, entitlements
+- [x] Warranty result page shows AMC contract details prominently
+
+**Request Support CTA:**
+- [x] Button on warranty result page
+- [x] Links to `https://support.thegoodmen.in?source=warranty-portal&serial=XXX`
+
 ### Phase 2A - Foundation ✅ COMPLETE (January 2026)
 - [x] SmartSelect Component - Searchable dropdown with async API search
 - [x] DateDurationInput Component - Dual mode (End Date / Duration)
@@ -100,29 +125,29 @@ Support multiple parts with different warranty periods for the same device.
 - [x] Duration Units Master - Days, Months, Years
 
 ### Phase 2B - Core Modules ✅ COMPLETE (January 2026)
-- [x] **Software & License Module** 
-  - Full CRUD APIs with renewal tracking
-  - License status calculation (active/expiring/expired)
-  - License expiring summary API
-  - Frontend Licenses page with stats cards
-  - SmartSelect and DateDurationInput integration
-- [x] **AMC Device Assignment System**
-  - AMC_Device join table for proper assignment tracking
-  - Single device assignment API
-  - Bulk assignment with preview/confirm workflow
-  - Device validation (company match, duplicates, not found)
-- [x] **Service Record Enhancement**
-  - Enhanced model with parts_used tracking
-  - Labor/parts cost fields
-  - Warranty impact fields (extends_device_warranty, new_warranty_end_date)
-  - AMC quota consumption tracking
-- [x] **Request Support CTA**
-  - Button on warranty result page
-  - Links to https://support.thegoodmen.in with context params
+- [x] Software & License Module - Full CRUD with renewal tracking
+- [x] AMC Device Assignment APIs - Single + bulk assignment with preview
+- [x] Service Record Enhancement - Parts used, warranty impact, costs
 
-### Phase 2C - Bulk Operations & Polish (Next)
-- [ ] Bulk Upload System (Template → Upload → Preview → Import)
-  - Priority: Devices → Users → Companies → Sites → Parts → Licenses
+### P1 - ADMIN & USER ROLE MANAGEMENT (Next)
+- [ ] Admin Users Module
+  - Roles: Super Admin, Admin, Staff, Service Engineer
+  - User CRUD with role assignment
+  - Enable/disable users, password reset
+  - Activity logs
+- [ ] Engineer Site Assignment
+  - `engineer_site_assignment` table
+  - Engineers assigned at Site level
+  - Can only see/service assigned sites' devices
+
+### P2 - BULK OPERATIONS & ENGINEER PORTAL
+- [ ] Bulk Upload System (Template → Preview → Confirm)
+  - Priority: Devices → Users → Companies → Sites → Parts → Licenses → AMC Assignments
+- [ ] Engineer Portal
+  - Engineer role login
+  - View assigned sites/devices
+  - Add service records with parts, warranty impact
+- [ ] Service Record UI Enhancement
 
 ### Phase 3 - Future
 - [ ] WhatsApp Integration (QR-based notifications)
