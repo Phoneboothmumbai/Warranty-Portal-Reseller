@@ -222,9 +222,20 @@ const Devices = () => {
     setModalOpen(true);
   };
 
-  const openDetailModal = (device) => {
-    setSelectedDevice(device);
-    setDetailModalOpen(true);
+  const openDetailModal = async (device) => {
+    try {
+      // Fetch full device details including AMC info from API
+      const response = await axios.get(`${API}/admin/devices/${device.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSelectedDevice(response.data);
+      setDetailModalOpen(true);
+    } catch (error) {
+      toast.error('Failed to fetch device details');
+      // Fallback to list data
+      setSelectedDevice(device);
+      setDetailModalOpen(true);
+    }
   };
 
   const closeModal = () => {
