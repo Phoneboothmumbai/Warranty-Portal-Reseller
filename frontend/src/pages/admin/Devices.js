@@ -15,6 +15,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Devices = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [devices, setDevices] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [users, setUsers] = useState([]);
