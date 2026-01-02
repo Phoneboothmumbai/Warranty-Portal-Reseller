@@ -74,14 +74,51 @@ Testing P0 Critical Data Architecture Fixes:
 - **JOIN Relationships:** Working correctly across all APIs
 - **AMC Override Rule:** Functioning as expected
 
-## Frontend Test Scenarios (Not Tested - Backend Only)
+## Frontend Test Results
 
-### 5. Frontend - Devices Page
-- Table should show AMC column
-- Stats should show "With AMC" count
-- Filter by AMC status should work
+### ✅ Test 1: Devices Page - AMC Status Column
+**Status:** PASSED
+**Verified:**
+- AMC column header present in devices table
+- AMC status badges display correctly: "Active" (blue), "None" (gray)
+- AMC contract names show below status for devices with AMC
+- Badge colors: Active = bg-blue-50 text-blue-600, None = bg-slate-100 text-slate-400
 
-### 6. Frontend - Warranty Result Page
-- Should show AMC Contract details
-- Should show coverage type and dates
-- Request Support button should be visible
+### ✅ Test 2: Devices Page - AMC Stats Card
+**Status:** PASSED
+**Verified:**
+- "With AMC" stats card present and functional
+- Shows purple number (text-purple-600) as expected
+- Count accurately reflects devices with active AMC (5 devices)
+
+### ✅ Test 3: Devices Page - AMC Filter
+**Status:** PASSED
+**Verified:**
+- "All AMC" dropdown filter exists and functional
+- AMC Active filter: Shows 5 devices with active AMC
+- No AMC filter: Shows 24 devices without AMC
+- Filter correctly updates device list based on AMC status
+
+### ✅ Test 4: Warranty Result Page - AMC Contract Info
+**Status:** PASSED
+**Verified:**
+- "SERVICE / AMC COVERAGE" section displays correctly
+- AMC Contract name shows: "Full Coverage for Ocean"
+- Coverage Type displays: "Non_comprehensive"
+- Valid Until date shows: "01 Jan 2027"
+- "Active" badge present and styled correctly
+
+### ✅ Test 5: Warranty Result Page - Request Support Button
+**Status:** PASSED
+**Verified:**
+- "Request Support" button visible and properly positioned
+- Located next to "Download Warranty Report (PDF)" button
+- Both buttons in same container with proper styling
+- Button has correct data-testid="request-support-btn"
+
+## Frontend Test Summary
+- **Total Tests:** 5/5 passed
+- **Success Rate:** 100%
+- **Critical Issues:** 0
+- **AMC UI Elements:** All functioning correctly
+- **User Experience:** Smooth and intuitive
