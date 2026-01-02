@@ -78,6 +78,7 @@ const Devices = () => {
       const params = {};
       if (filterCompany) params.company_id = filterCompany;
       if (filterStatus) params.status = filterStatus;
+      if (filterAMC) params.amc_status = filterAMC;
       
       const [devicesRes, companiesRes] = await Promise.all([
         axios.get(`${API}/admin/devices`, {
