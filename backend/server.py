@@ -1592,9 +1592,72 @@ async def create_device(device_data: DeviceCreate, admin: dict = Depends(get_cur
 
 @api_router.get("/admin/devices/{device_id}")
 async def get_device(device_id: str, admin: dict = Depends(get_current_admin)):
+    """Get device with full AMC contract details - P0 Fix"""
     device = await db.devices.find_one({"id": device_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
+    
+    # Get company details
+    company = await db.companies.find_one({"id": device.get("company_id")}, {"_id": 0, "name": 1})
+    device["company_name"] = company.get("name") if company else "Unknown"
+    
+    # Get assigned user details
+    if device.get("assigned_user_id"):
+        user = await db.users.find_one({"id": device["assigned_user_id"]}, {"_id": 0, "name": 1, "email": 1})
+        device["assigned_user_name"] = user.get("name") if user else None
+        device["assigned_user_email"] = user.get("email") if user else None
+    
+    # JOIN amc_device_assignments → amc_contracts for full AMC info
+    amc_assignments = await db.amc_device_assignments.find({
+        "device_id": device_id
+    }, {"_id": 0}).to_list(100)
+    
+    device["amc_assignments"] = []
+    device["active_amc"] = None
+    
+    for assignment in amc_assignments:
+        # Get full contract details
+        contract = await db.amc_contracts.find_one({
+            "id": assignment["amc_contract_id"],
+            "is_deleted": {"$ne": True}
+        }, {"_id": 0})
+        
+        if contract:
+            coverage_active = is_warranty_active(assignment.get("coverage_end", ""))
+            amc_info = {
+                "assignment_id": assignment["id"],
+                "amc_contract_id": contract["id"],
+                "amc_name": contract.get("name"),
+                "amc_type": contract.get("amc_type"),
+                "coverage_start": assignment.get("coverage_start"),
+                "coverage_end": assignment.get("coverage_end"),
+                "coverage_active": coverage_active,
+                "assignment_status": assignment.get("status"),
+                "coverage_includes": contract.get("coverage_includes"),
+                "entitlements": contract.get("entitlements")
+            }
+            device["amc_assignments"].append(amc_info)
+            
+            # Set active AMC if coverage is current
+            if coverage_active and assignment.get("status") == "active" and not device["active_amc"]:
+                device["active_amc"] = amc_info
+    
+    # Compute overall AMC status
+    if device["active_amc"]:
+        device["amc_status"] = "active"
+    elif len(amc_assignments) > 0:
+        device["amc_status"] = "expired"
+    else:
+        device["amc_status"] = "none"
+    
+    # Get parts
+    parts = await db.parts.find({"device_id": device_id, "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(100)
+    device["parts"] = parts
+    
+    # Get service history count
+    service_count = await db.service_history.count_documents({"device_id": device_id})
+    device["service_count"] = service_count
+    
     return device
 
 @api_router.put("/admin/devices/{device_id}")
