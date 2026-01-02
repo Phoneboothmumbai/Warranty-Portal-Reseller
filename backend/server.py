@@ -2075,16 +2075,54 @@ def get_days_until_expiry(end_date: str) -> Optional[int]:
 async def list_amc_contracts(
     company_id: Optional[str] = None,
     status: Optional[str] = None,
+    serial: Optional[str] = None,  # Search by device serial number
+    asset_tag: Optional[str] = None,  # Search by device asset tag
+    q: Optional[str] = None,  # General search (name, company)
+    limit: int = Query(default=100, le=500),
+    page: int = Query(default=1, ge=1),
     admin: dict = Depends(get_current_admin)
 ):
-    """List all AMC contracts with computed status"""
+    """List AMC contracts with serial number search - P0 Fix"""
     query = {"is_deleted": {"$ne": True}}
     if company_id:
         query["company_id"] = company_id
     
-    contracts = await db.amc_contracts.find(query, {"_id": 0}).to_list(1000)
+    # If searching by serial/asset_tag, first find the device, then find contracts
+    if serial or asset_tag:
+        device_query = {"is_deleted": {"$ne": True}}
+        if serial:
+            device_query["serial_number"] = {"$regex": serial, "$options": "i"}
+        if asset_tag:
+            device_query["asset_tag"] = {"$regex": asset_tag, "$options": "i"}
+        
+        devices = await db.devices.find(device_query, {"_id": 0, "id": 1}).to_list(100)
+        device_ids = [d["id"] for d in devices]
+        
+        if not device_ids:
+            return []  # No devices match, so no contracts
+        
+        # Find assignments for these devices
+        assignments = await db.amc_device_assignments.find({
+            "device_id": {"$in": device_ids}
+        }, {"_id": 0, "amc_contract_id": 1}).to_list(1000)
+        
+        contract_ids = list(set([a["amc_contract_id"] for a in assignments]))
+        if not contract_ids:
+            return []
+        
+        query["id"] = {"$in": contract_ids}
     
-    # Compute status for each contract
+    # General search
+    if q and q.strip():
+        search_regex = {"$regex": q.strip(), "$options": "i"}
+        query["$or"] = [
+            {"name": search_regex}
+        ]
+    
+    skip = (page - 1) * limit
+    contracts = await db.amc_contracts.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+    
+    # Compute status and enrich for each contract
     result = []
     for contract in contracts:
         status_val = get_amc_status(contract.get("start_date", ""), contract.get("end_date", ""))
@@ -2096,10 +2134,18 @@ async def list_amc_contracts(
         # Get usage stats
         usage_count = await db.amc_usage.count_documents({"amc_contract_id": contract["id"]})
         
+        # Get assigned devices count
+        devices_count = await db.amc_device_assignments.count_documents({
+            "amc_contract_id": contract["id"],
+            "status": "active"
+        })
+        
         contract["status"] = status_val
         contract["days_until_expiry"] = days_left
         contract["company_name"] = company.get("name") if company else "Unknown"
         contract["usage_count"] = usage_count
+        contract["assigned_devices_count"] = devices_count
+        contract["label"] = contract.get("name")  # SmartSelect compatibility
         
         if status and status_val != status:
             continue
