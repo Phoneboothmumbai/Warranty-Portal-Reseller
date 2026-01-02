@@ -333,6 +333,16 @@ const Devices = () => {
             <option key={s.id} value={s.code?.toLowerCase() || s.name.toLowerCase()}>{s.name}</option>
           ))}
         </select>
+        <select
+          value={filterAMC}
+          onChange={(e) => setFilterAMC(e.target.value)}
+          className="form-select w-full sm:w-36"
+        >
+          <option value="">All AMC</option>
+          <option value="active">AMC Active</option>
+          <option value="expired">AMC Expired</option>
+          <option value="none">No AMC</option>
+        </select>
       </div>
 
       {/* Stats Cards */}
