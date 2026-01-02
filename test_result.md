@@ -122,3 +122,34 @@ Testing P0 Critical Data Architecture Fixes:
 - **Critical Issues:** 0
 - **AMC UI Elements:** All functioning correctly
 - **User Experience:** Smooth and intuitive
+
+### ✅ Test 6: Device Details Modal - AMC Coverage Details (Critical Fix Verification)
+**Status:** PASSED
+**Verified:**
+- AMC Active badge displays correctly in device header (green badge with shield icon)
+- "Manufacturer Warranty (Overridden by AMC)" label shows for devices with active AMC
+- "AMC COVERAGE DETAILS" section present with green background (bg-emerald-50)
+- Contract details display: Contract Name, Contract Type, Start Date, End Date, Status
+- Active status shows with days remaining indicator (e.g., "Active (364 days left)")
+- "View Contract" link present and functional
+- Coverage Scope section with "✅ Covered Items" and "❌ Not Covered" subsections
+- Coverage badges display correctly: Hardware Parts, Software, Onsite Support, Remote Support, Preventive Maintenance
+- Service Entitlements section present
+- Replaced Parts section shows with warranty status indicators
+
+### ✅ Test 7: Device Without AMC - Proper Hiding Logic
+**Status:** PASSED
+**Verified:**
+- No "AMC Active" badge displayed for devices without AMC
+- No AMC Coverage Details section shown (properly hidden, not showing "N/A")
+- Warranty field shows normally as "Warranty End" without override text
+- Only basic device information and parts sections displayed
+- Clean UI without AMC-related elements cluttering the interface
+
+### ✅ Test 8: AMC Override Logic in Device Details
+**Status:** PASSED
+**Verified:**
+- Devices with active AMC show warranty field as "Manufacturer Warranty (Overridden by AMC)"
+- Warranty dates appear grayed out when overridden by AMC
+- AMC coverage takes precedence over device warranty status
+- Override logic working correctly across device detail views
