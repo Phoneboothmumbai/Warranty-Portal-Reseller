@@ -127,6 +127,7 @@ const Parts = () => {
     setFormData({
       device_id: filterDevice || '',
       part_name: 'Keyboard',
+      serial_number: '',
       replaced_date: new Date().toISOString().split('T')[0],
       warranty_months: 3,
       notes: ''
@@ -139,6 +140,7 @@ const Parts = () => {
     setFormData({
       device_id: part.device_id,
       part_name: part.part_name,
+      serial_number: part.serial_number || '',
       replaced_date: part.replaced_date,
       warranty_months: part.warranty_months,
       notes: part.notes || ''
