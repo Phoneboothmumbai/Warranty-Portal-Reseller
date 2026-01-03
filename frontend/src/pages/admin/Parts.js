@@ -48,10 +48,37 @@ const Parts = () => {
       ]);
       setParts(partsRes.data);
       setDevices(devicesRes.data);
+      
+      // Extract unique part names from existing parts and merge with defaults
+      const existingPartNames = [...new Set(partsRes.data.map(p => p.part_name))];
+      const allPartTypes = [...new Set([...defaultPartTypes, ...existingPartNames])];
+      setPartTypes(allPartTypes);
     } catch (error) {
       toast.error('Failed to fetch data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Prepare device options for SmartSelect
+  const deviceOptions = devices.map(d => ({
+    id: d.id,
+    label: `${d.brand} ${d.model} (${d.serial_number})`,
+    subtitle: d.company_name || ''
+  }));
+
+  // Prepare part type options for SmartSelect
+  const partTypeOptions = partTypes.map(p => ({
+    id: p,
+    label: p
+  }));
+
+  // Handle adding new part type
+  const handleAddPartType = (newPartName) => {
+    if (newPartName && !partTypes.includes(newPartName)) {
+      setPartTypes(prev => [...prev, newPartName]);
+      setFormData(prev => ({ ...prev, part_name: newPartName }));
+      toast.success(`Added new part type: ${newPartName}`);
     }
   };
 
