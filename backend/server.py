@@ -355,6 +355,7 @@ class Part(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     device_id: str
     part_name: str
+    serial_number: Optional[str] = None
     replaced_date: str
     warranty_months: int
     warranty_expiry_date: str
@@ -365,12 +366,14 @@ class Part(BaseModel):
 class PartCreate(BaseModel):
     device_id: str
     part_name: str
+    serial_number: Optional[str] = None
     replaced_date: str
     warranty_months: int
     notes: Optional[str] = None
 
 class PartUpdate(BaseModel):
     part_name: Optional[str] = None
+    serial_number: Optional[str] = None
     replaced_date: Optional[str] = None
     warranty_months: Optional[int] = None
     notes: Optional[str] = None
