@@ -248,7 +248,10 @@ const Parts = () => {
                         </div>
                         <div>
                           <p className="font-medium text-slate-900">{part.part_name}</p>
-                          {part.notes && (
+                          {part.serial_number && (
+                            <p className="text-xs text-slate-500">S/N: {part.serial_number}</p>
+                          )}
+                          {!part.serial_number && part.notes && (
                             <p className="text-xs text-slate-500 truncate max-w-[200px]">{part.notes}</p>
                           )}
                         </div>
