@@ -1755,6 +1755,106 @@ async def get_company_overview(company_id: str, admin: dict = Depends(get_curren
         "services": services
     }
 
+# --- Admin: Manage Company Portal Users ---
+
+@api_router.get("/admin/companies/{company_id}/portal-users")
+async def list_company_portal_users(company_id: str, admin: dict = Depends(get_current_admin)):
+    """List all portal users for a company"""
+    company = await db.companies.find_one({"id": company_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    users_cursor = db.company_users.find(
+        {"company_id": company_id, "is_deleted": {"$ne": True}},
+        {"_id": 0, "password_hash": 0}
+    )
+    users = await users_cursor.to_list(100)
+    return users
+
+@api_router.post("/admin/companies/{company_id}/portal-users")
+async def create_company_portal_user(
+    company_id: str,
+    user_data: dict,
+    admin: dict = Depends(get_current_admin)
+):
+    """Create a new portal user for a company"""
+    company = await db.companies.find_one({"id": company_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Check if email already exists
+    existing = await db.company_users.find_one({"email": user_data.get("email"), "is_deleted": {"$ne": True}})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Validate required fields
+    if not user_data.get("name") or not user_data.get("email") or not user_data.get("password"):
+        raise HTTPException(status_code=400, detail="Name, email, and password are required")
+    
+    if len(user_data.get("password", "")) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    # Create user
+    new_user = {
+        "id": str(uuid.uuid4()),
+        "company_id": company_id,
+        "email": user_data.get("email"),
+        "password_hash": get_password_hash(user_data.get("password")),
+        "name": user_data.get("name"),
+        "phone": user_data.get("phone", ""),
+        "role": user_data.get("role", "company_viewer"),
+        "is_active": True,
+        "is_deleted": False,
+        "created_at": get_ist_isoformat(),
+        "created_by": f"admin:{admin.get('id')}"
+    }
+    
+    await db.company_users.insert_one(new_user)
+    
+    return {"message": "Portal user created successfully", "id": new_user["id"]}
+
+@api_router.delete("/admin/companies/{company_id}/portal-users/{user_id}")
+async def delete_company_portal_user(
+    company_id: str,
+    user_id: str,
+    admin: dict = Depends(get_current_admin)
+):
+    """Delete (soft) a portal user"""
+    result = await db.company_users.update_one(
+        {"id": user_id, "company_id": company_id},
+        {"$set": {"is_deleted": True, "deleted_at": get_ist_isoformat()}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Portal user not found")
+    
+    return {"message": "Portal user deleted"}
+
+@api_router.put("/admin/companies/{company_id}/portal-users/{user_id}/reset-password")
+async def reset_portal_user_password(
+    company_id: str,
+    user_id: str,
+    data: dict,
+    admin: dict = Depends(get_current_admin)
+):
+    """Reset a portal user's password"""
+    new_password = data.get("password")
+    if not new_password or len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    result = await db.company_users.update_one(
+        {"id": user_id, "company_id": company_id, "is_deleted": {"$ne": True}},
+        {"$set": {
+            "password_hash": get_password_hash(new_password),
+            "updated_at": get_ist_isoformat()
+        }}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Portal user not found")
+    
+    return {"message": "Password reset successfully"}
+
 # ==================== ADMIN ENDPOINTS - USERS ====================
 
 @api_router.get("/admin/users")
