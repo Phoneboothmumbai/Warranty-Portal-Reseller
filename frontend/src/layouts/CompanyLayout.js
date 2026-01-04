@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Laptop, Shield, FileText, Ticket, Package, 
@@ -21,13 +21,34 @@ const navItems = [
 const CompanyLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const { user, logout } = useCompanyAuth();
+  const { user, token, logout, loading } = useCompanyAuth();
   const navigate = useNavigate();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !token) {
+      navigate('/company/login');
+    }
+  }, [token, loading, navigate]);
 
   const handleLogout = () => {
     logout();
     navigate('/company/login');
   };
+
+  // Show loading spinner while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!token) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
