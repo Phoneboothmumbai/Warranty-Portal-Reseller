@@ -86,6 +86,85 @@ const CompanyDetails = () => {
     }
   };
 
+  // Portal Users functions
+  const fetchPortalUsers = async () => {
+    try {
+      setLoadingPortalUsers(true);
+      const response = await axios.get(`${API}/admin/companies/${companyId}/portal-users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPortalUsers(response.data);
+    } catch (error) {
+      console.error('Failed to load portal users:', error);
+    } finally {
+      setLoadingPortalUsers(false);
+    }
+  };
+
+  const handleAddPortalUser = async (e) => {
+    e.preventDefault();
+    if (!newPortalUser.name || !newPortalUser.email || !newPortalUser.password) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    try {
+      setSaving(true);
+      await axios.post(`${API}/admin/companies/${companyId}/portal-users`, newPortalUser, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Portal user created successfully');
+      setShowAddPortalUser(false);
+      setNewPortalUser({ name: '', email: '', phone: '', password: '', role: 'company_viewer' });
+      fetchPortalUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create portal user');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeletePortalUser = async (userId, userName) => {
+    if (!window.confirm(`Are you sure you want to delete portal user "${userName}"?`)) return;
+    
+    try {
+      await axios.delete(`${API}/admin/companies/${companyId}/portal-users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Portal user deleted');
+      fetchPortalUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete portal user');
+    }
+  };
+
+  const handleResetPassword = async (userId, userName) => {
+    const newPassword = window.prompt(`Enter new password for "${userName}":`);
+    if (!newPassword) return;
+    
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    
+    try {
+      await axios.put(`${API}/admin/companies/${companyId}/portal-users/${userId}/reset-password`, 
+        { password: newPassword },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success('Password reset successfully');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to reset password');
+    }
+  };
+
+  // Load portal users when tab changes
+  useEffect(() => {
+    if (activeTab === 'portal_users' && portalUsers.length === 0) {
+      fetchPortalUsers();
+    }
+  }, [activeTab]);
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
