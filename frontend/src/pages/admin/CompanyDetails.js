@@ -895,6 +895,93 @@ const CompanyDetails = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add Portal User Modal */}
+      <Dialog open={showAddPortalUser} onOpenChange={setShowAddPortalUser}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Portal User</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddPortalUser} className="space-y-4 mt-4">
+            <div>
+              <label className="form-label">Full Name *</label>
+              <input
+                type="text"
+                value={newPortalUser.name}
+                onChange={(e) => setNewPortalUser({ ...newPortalUser, name: e.target.value })}
+                className="form-input"
+                placeholder="Enter full name"
+                required
+              />
+            </div>
+            <div>
+              <label className="form-label">Email *</label>
+              <input
+                type="email"
+                value={newPortalUser.email}
+                onChange={(e) => setNewPortalUser({ ...newPortalUser, email: e.target.value })}
+                className="form-input"
+                placeholder="Enter email address"
+                required
+              />
+            </div>
+            <div>
+              <label className="form-label">Phone</label>
+              <input
+                type="tel"
+                value={newPortalUser.phone}
+                onChange={(e) => setNewPortalUser({ ...newPortalUser, phone: e.target.value })}
+                className="form-input"
+                placeholder="Enter phone number"
+              />
+            </div>
+            <div>
+              <label className="form-label">Password *</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={newPortalUser.password}
+                  onChange={(e) => setNewPortalUser({ ...newPortalUser, password: e.target.value })}
+                  className="form-input pr-10"
+                  placeholder="Enter password (min 6 characters)"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="form-label">Role</label>
+              <select
+                value={newPortalUser.role}
+                onChange={(e) => setNewPortalUser({ ...newPortalUser, role: e.target.value })}
+                className="form-input"
+              >
+                <option value="company_viewer">Viewer (Read Only)</option>
+                <option value="company_admin">Admin (Full Access)</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setShowAddPortalUser(false)}>
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                disabled={saving}
+                className="bg-[#0F62FE] hover:bg-[#0043CE] text-white"
+              >
+                {saving ? 'Creating...' : 'Create User'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
