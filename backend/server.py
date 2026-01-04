@@ -4573,6 +4573,10 @@ async def create_company_ticket(data: ServiceTicketCreate, user: dict = Depends(
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
     
+    # Get company details for osTicket
+    company = await db.companies.find_one({"id": user["company_id"]}, {"_id": 0, "name": 1})
+    company_name = company.get("name", "Unknown") if company else "Unknown"
+    
     ticket = ServiceTicket(
         company_id=user["company_id"],
         device_id=data.device_id,
@@ -4585,7 +4589,41 @@ async def create_company_ticket(data: ServiceTicketCreate, user: dict = Depends(
     
     await db.service_tickets.insert_one(ticket.model_dump())
     
-    return {"message": "Ticket created successfully", "ticket_number": ticket.ticket_number, "id": ticket.id}
+    # Sync to osTicket
+    device_info = f"{device.get('brand', '')} {device.get('model', '')} (S/N: {device.get('serial_number', '')})"
+    osticket_message = f"""
+<h3>Service Request from Warranty Portal</h3>
+<p><strong>Company:</strong> {company_name}</p>
+<p><strong>Submitted by:</strong> {user.get('name', 'Unknown')} ({user.get('email', '')})</p>
+<p><strong>Device:</strong> {device_info}</p>
+<p><strong>Category:</strong> {data.issue_category or 'General'}</p>
+<p><strong>Portal Ticket #:</strong> {ticket.ticket_number}</p>
+<hr>
+<p><strong>Issue Description:</strong></p>
+<p>{data.description}</p>
+"""
+    
+    osticket_id = await create_osticket(
+        email=user.get("email", "noreply@warranty-portal.com"),
+        name=user.get("name", "Portal User"),
+        subject=f"[{ticket.ticket_number}] {data.subject}",
+        message=osticket_message,
+        phone=user.get("phone", "")
+    )
+    
+    # Update ticket with osTicket reference if created successfully
+    if osticket_id:
+        await db.service_tickets.update_one(
+            {"id": ticket.id},
+            {"$set": {"osticket_id": osticket_id}}
+        )
+    
+    return {
+        "message": "Ticket created successfully", 
+        "ticket_number": ticket.ticket_number, 
+        "id": ticket.id,
+        "osticket_id": osticket_id
+    }
 
 @api_router.get("/company/tickets/{ticket_id}")
 async def get_company_ticket(ticket_id: str, user: dict = Depends(get_current_company_user)):
