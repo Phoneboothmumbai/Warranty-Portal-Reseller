@@ -46,6 +46,7 @@ function App() {
                 <Route index element={<Dashboard />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="companies" element={<Companies />} />
+                <Route path="companies/:companyId" element={<CompanyDetails />} />
                 <Route path="users" element={<Users />} />
                 <Route path="devices" element={<Devices />} />
                 <Route path="parts" element={<Parts />} />
