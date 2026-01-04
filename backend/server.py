@@ -2862,7 +2862,7 @@ async def create_deployment(data: DeploymentCreate, admin: dict = Depends(get_cu
     await db.deployments.insert_one(deployment.model_dump())
     
     # Now create the device records for serialized items
-    for item in processed_items:
+    for item_idx, item in enumerate(processed_items):
         if item.get("is_serialized") and item.get("serial_numbers"):
             for i, serial in enumerate(item["serial_numbers"]):
                 device_id = item["linked_device_ids"][i] if i < len(item.get("linked_device_ids", [])) else str(uuid.uuid4())
@@ -2871,6 +2871,8 @@ async def create_deployment(data: DeploymentCreate, admin: dict = Depends(get_cu
                     "company_id": data.company_id,
                     "site_id": data.site_id,
                     "deployment_id": deployment.id,
+                    "deployment_item_index": item_idx,
+                    "source": "deployment",
                     "device_type": item.get("category"),
                     "brand": item.get("brand") or "Unknown",
                     "model": item.get("model") or "Unknown",
