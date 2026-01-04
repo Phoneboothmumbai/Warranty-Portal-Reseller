@@ -229,6 +229,12 @@ const Companies = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link to={`/admin/companies/${company.id}`}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Link>
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEditModal(company)}>
                             <Edit2 className="h-4 w-4 mr-2" />
                             Edit
