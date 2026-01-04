@@ -1488,6 +1488,108 @@ async def delete_company(company_id: str, admin: dict = Depends(get_current_admi
     await log_audit("company", company_id, "delete", {"is_deleted": True}, admin)
     return {"message": "Company archived"}
 
+@api_router.get("/admin/companies/{company_id}/overview")
+async def get_company_overview(company_id: str, admin: dict = Depends(get_current_admin)):
+    """Get comprehensive company 360° view with all related data"""
+    # Get company details
+    company = await db.companies.find_one({"id": company_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Get all related data in parallel
+    devices_cursor = db.devices.find({"company_id": company_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    devices = await devices_cursor.to_list(500)
+    
+    # Enrich devices with warranty status
+    for device in devices:
+        device["warranty_active"] = is_warranty_active(device.get("warranty_end_date", ""))
+        # Check AMC status
+        amc_assignment = await db.amc_device_assignments.find_one({
+            "device_id": device["id"],
+            "status": "active"
+        }, {"_id": 0})
+        if amc_assignment and is_warranty_active(amc_assignment.get("coverage_end", "")):
+            device["amc_status"] = "active"
+            device["amc_coverage_end"] = amc_assignment.get("coverage_end")
+        else:
+            device["amc_status"] = "none"
+    
+    # Get sites
+    sites_cursor = db.sites.find({"company_id": company_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    sites = await sites_cursor.to_list(100)
+    
+    # Get users/contacts
+    users_cursor = db.users.find({"company_id": company_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    users = await users_cursor.to_list(500)
+    
+    # Get deployments
+    deployments_cursor = db.deployments.find({"company_id": company_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    deployments = await deployments_cursor.to_list(100)
+    for dep in deployments:
+        site = await db.sites.find_one({"id": dep.get("site_id")}, {"_id": 0, "name": 1})
+        dep["site_name"] = site.get("name") if site else "Unknown"
+        dep["items_count"] = len(dep.get("items", []))
+    
+    # Get licenses
+    licenses_cursor = db.licenses.find({"company_id": company_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    licenses = await licenses_cursor.to_list(100)
+    for lic in licenses:
+        lic["is_expired"] = not is_warranty_active(lic.get("end_date", ""))
+    
+    # Get AMC contracts
+    amc_cursor = db.amc_contracts.find({"company_id": company_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    amc_contracts = await amc_cursor.to_list(50)
+    for amc in amc_contracts:
+        amc["is_active"] = is_warranty_active(amc.get("end_date", ""))
+        # Count devices covered
+        device_count = await db.amc_device_assignments.count_documents({
+            "amc_contract_id": amc["id"],
+            "status": "active"
+        })
+        amc["devices_covered"] = device_count
+    
+    # Get service history
+    # First get all device IDs for this company
+    device_ids = [d["id"] for d in devices]
+    services = []
+    if device_ids:
+        services_cursor = db.service_history.find({
+            "device_id": {"$in": device_ids},
+            "is_deleted": {"$ne": True}
+        }, {"_id": 0}).sort("service_date", -1).limit(100)
+        services = await services_cursor.to_list(100)
+        for svc in services:
+            device = next((d for d in devices if d["id"] == svc.get("device_id")), None)
+            if device:
+                svc["device_info"] = f"{device.get('brand', '')} {device.get('model', '')} ({device.get('serial_number', '')})"
+    
+    # Calculate summary stats
+    summary = {
+        "total_devices": len(devices),
+        "active_warranties": sum(1 for d in devices if d.get("warranty_active")),
+        "active_amc_devices": sum(1 for d in devices if d.get("amc_status") == "active"),
+        "total_sites": len(sites),
+        "total_users": len(users),
+        "total_deployments": len(deployments),
+        "total_licenses": len(licenses),
+        "active_licenses": sum(1 for l in licenses if not l.get("is_expired")),
+        "total_amc_contracts": len(amc_contracts),
+        "active_amc_contracts": sum(1 for a in amc_contracts if a.get("is_active")),
+        "total_service_records": len(services)
+    }
+    
+    return {
+        "company": company,
+        "summary": summary,
+        "devices": devices,
+        "sites": sites,
+        "users": users,
+        "deployments": deployments,
+        "licenses": licenses,
+        "amc_contracts": amc_contracts,
+        "services": services
+    }
+
 # ==================== ADMIN ENDPOINTS - USERS ====================
 
 @api_router.get("/admin/users")
