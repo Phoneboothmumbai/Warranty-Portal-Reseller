@@ -889,10 +889,31 @@ const Devices = () => {
                     <p className="text-slate-500">Company</p>
                     <p className="font-medium">{selectedDevice.company_name || getCompanyName(selectedDevice.company_id)}</p>
                   </div>
+                  {selectedDevice.site_name && (
+                    <div>
+                      <p className="text-slate-500">Site</p>
+                      <p className="font-medium flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {selectedDevice.site_name}
+                      </p>
+                    </div>
+                  )}
                   {selectedDevice.location && (
                     <div>
                       <p className="text-slate-500">Location</p>
                       <p className="font-medium">{selectedDevice.location}</p>
+                    </div>
+                  )}
+                  {selectedDevice.source === 'deployment' && selectedDevice.deployment_name && (
+                    <div>
+                      <p className="text-slate-500">Source</p>
+                      <a 
+                        href={`/admin/deployments?id=${selectedDevice.deployment_id}`}
+                        className="font-medium text-purple-600 hover:underline flex items-center gap-1"
+                      >
+                        <Package className="h-3 w-3" />
+                        {selectedDevice.deployment_name}
+                      </a>
                     </div>
                   )}
                 </div>
