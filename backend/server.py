@@ -4561,14 +4561,14 @@ async def update_company_profile(
     if updates.get("current_password") and updates.get("new_password"):
         # Verify current password
         stored_user = await db.company_users.find_one({"id": user["id"]})
-        if not stored_user or not bcrypt.checkpw(
-            updates["current_password"].encode('utf-8'),
-            stored_user["password_hash"].encode('utf-8')
+        if not stored_user or not verify_password(
+            updates["current_password"],
+            stored_user["password_hash"]
         ):
             raise HTTPException(status_code=400, detail="Current password is incorrect")
         
         # Update password
-        new_hash = bcrypt.hashpw(updates["new_password"].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        new_hash = get_password_hash(updates["new_password"])
         await db.company_users.update_one(
             {"id": user["id"]},
             {"$set": {"password_hash": new_hash, "updated_at": get_ist_isoformat()}}
