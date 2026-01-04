@@ -52,6 +52,11 @@ Build an enterprise-grade Warranty & Asset Tracking Portal with:
 3. **Wrong collection** - Login uses `admins`, not `users`
 4. **AMC not showing** - `amc_device_assignments` needs `id` field (not just `assignment_id`)
 
+## Recent Updates (Jan 4, 2026)
+- **Parts Page:** Added SmartSelect dropdowns with search for Device and Part Name, plus "Add New Part Type" option and optional Serial Number field
+- **Deployments Page:** Added SmartSelect dropdowns with search for Company, Site, Category (with "Add New"), and Brand (with "Add New")
+- **PDF Export:** Fixed AMC details not showing in warranty PDF download
+
 ## Upcoming Tasks
 - P1: Admin & User Role Management (Super Admin, Admin, Staff, Service Engineer)
 - P2: Engineer Field Visit Support
