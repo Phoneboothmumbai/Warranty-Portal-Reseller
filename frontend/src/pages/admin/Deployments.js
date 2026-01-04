@@ -313,6 +313,42 @@ const Deployments = () => {
     ? amcContracts.filter(a => a.company_id === formData.company_id && a.status === 'active')
     : [];
 
+  // Prepare options for SmartSelect
+  const companyOptions = companies.map(c => ({
+    id: c.id,
+    label: c.name
+  }));
+
+  const siteOptions = companySites.map(s => ({
+    id: s.id,
+    label: s.name,
+    subtitle: s.address || ''
+  }));
+
+  const categoryOptions = CATEGORIES.map(c => ({
+    id: c.value,
+    label: c.label
+  }));
+
+  const brandOptions = brands.map(b => ({
+    id: b.name,
+    label: b.name
+  }));
+
+  // Handle adding new category
+  const handleAddCategory = (newCategory) => {
+    if (newCategory) {
+      toast.success(`Category "${newCategory}" will be used`);
+    }
+  };
+
+  // Handle adding new brand
+  const handleAddBrand = (newBrand) => {
+    if (newBrand) {
+      toast.success(`Brand "${newBrand}" will be used`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
