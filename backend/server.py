@@ -868,6 +868,36 @@ async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(
         raise credentials_exception
     return admin
 
+async def get_current_company_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current company portal user from JWT token"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        user_type: str = payload.get("type")
+        if user_id is None or user_type != "company_user":
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    user = await db.company_users.find_one(
+        {"id": user_id, "is_active": True, "is_deleted": {"$ne": True}}, 
+        {"_id": 0, "password_hash": 0}
+    )
+    if user is None:
+        raise credentials_exception
+    return user
+
+def require_company_admin(user: dict = Depends(get_current_company_user)):
+    """Dependency to require company_admin role"""
+    if user.get("role") != "company_admin":
+        raise HTTPException(status_code=403, detail="Admin role required for this action")
+    return user
+
 # ==================== AUDIT HELPER ====================
 
 async def log_audit(entity_type: str, entity_id: str, action: str, changes: dict, admin: dict):
