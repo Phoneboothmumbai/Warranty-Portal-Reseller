@@ -13,6 +13,7 @@ import AdminSetup from "./pages/admin/AdminSetup";
 import AdminLayout from "./layouts/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
 import Companies from "./pages/admin/Companies";
+import CompanyDetails from "./pages/admin/CompanyDetails";
 import Users from "./pages/admin/Users";
 import Devices from "./pages/admin/Devices";
 import Parts from "./pages/admin/Parts";
