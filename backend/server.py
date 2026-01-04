@@ -128,11 +128,13 @@ class Company(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
+    code: str = Field(default_factory=lambda: str(uuid.uuid4())[:8].upper())  # Unique code for self-registration
     gst_number: Optional[str] = None
     address: Optional[str] = None
     contact_name: str
     contact_email: str
     contact_phone: str
+    notification_email: Optional[str] = None
     amc_status: str = "not_applicable"
     notes: Optional[str] = None
     is_deleted: bool = False
@@ -140,21 +142,25 @@ class Company(BaseModel):
 
 class CompanyCreate(BaseModel):
     name: str
+    code: Optional[str] = None  # Auto-generated if not provided
     gst_number: Optional[str] = None
     address: Optional[str] = None
     contact_name: str
     contact_email: str
     contact_phone: str
+    notification_email: Optional[str] = None
     amc_status: str = "not_applicable"
     notes: Optional[str] = None
 
 class CompanyUpdate(BaseModel):
     name: Optional[str] = None
+    code: Optional[str] = None
     gst_number: Optional[str] = None
     address: Optional[str] = None
     contact_name: Optional[str] = None
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
+    notification_email: Optional[str] = None
     amc_status: Optional[str] = None
     notes: Optional[str] = None
 
