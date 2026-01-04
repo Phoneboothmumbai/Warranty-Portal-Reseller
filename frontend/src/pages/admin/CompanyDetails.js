@@ -350,6 +350,120 @@ const CompanyDetails = () => {
             </div>
           )}
 
+          {/* Portal Users Tab */}
+          {activeTab === 'portal_users' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-medium text-slate-900">Company Portal Logins</h3>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Manage users who can login to the company portal. 
+                    Company Code: <span className="font-mono font-medium text-blue-600">{company.code || 'Not Set'}</span>
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => setShowAddPortalUser(true)}
+                  className="bg-[#0F62FE] hover:bg-[#0043CE] text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Portal User
+                </Button>
+              </div>
+              
+              {loadingPortalUsers ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : portalUsers.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full table-modern">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Role</th>
+                        <th>Last Login</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {portalUsers.map((user) => (
+                        <tr key={user.id}>
+                          <td>
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 bg-emerald-50 rounded-full flex items-center justify-center">
+                                <span className="text-sm font-medium text-emerald-600">
+                                  {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                                </span>
+                              </div>
+                              <span className="font-medium">{user.name}</span>
+                            </div>
+                          </td>
+                          <td className="text-sm">{user.email}</td>
+                          <td className="text-sm">{user.phone || '-'}</td>
+                          <td>
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              user.role === 'company_admin' 
+                                ? 'bg-purple-50 text-purple-700' 
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {user.role === 'company_admin' ? 'Admin' : 'Viewer'}
+                            </span>
+                          </td>
+                          <td className="text-sm text-slate-500">
+                            {user.last_login ? formatDate(user.last_login) : 'Never'}
+                          </td>
+                          <td>
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              user.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                            }`}>
+                              {user.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleResetPassword(user.id, user.name)}
+                                className="text-blue-600 hover:text-blue-800 text-sm"
+                                title="Reset Password"
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeletePortalUser(user.id, user.name)}
+                                className="text-red-600 hover:text-red-800 text-sm"
+                                title="Delete User"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-slate-50 rounded-lg">
+                  <KeyRound className="h-12 w-12 mx-auto text-slate-300 mb-3" />
+                  <p className="text-slate-500 mb-4">No portal users found for this company</p>
+                  <p className="text-sm text-slate-400 mb-4">
+                    Users can self-register using company code: <span className="font-mono font-medium">{company.code || 'Not Set'}</span>
+                  </p>
+                  <Button 
+                    onClick={() => setShowAddPortalUser(true)}
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add First Portal User
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Sites Tab */}
           {activeTab === 'sites' && (
             <div>
