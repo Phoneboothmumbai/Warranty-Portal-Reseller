@@ -796,13 +796,30 @@ const Deployments = () => {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-500">Warranty End</label>
-                        <input
-                          type="date"
-                          value={item.warranty_end_date}
-                          onChange={(e) => updateItem(index, 'warranty_end_date', e.target.value)}
-                          className="form-input text-sm"
-                        />
+                        <label className="text-xs text-slate-500">Warranty Duration</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.warranty_duration || 12}
+                            onChange={(e) => updateItem(index, 'warranty_duration', e.target.value)}
+                            className="form-input text-sm w-20"
+                          />
+                          <select
+                            value={item.warranty_duration_unit || 'months'}
+                            onChange={(e) => updateItem(index, 'warranty_duration_unit', e.target.value)}
+                            className="form-select text-sm flex-1"
+                          >
+                            <option value="days">Days</option>
+                            <option value="months">Months</option>
+                            <option value="years">Years</option>
+                          </select>
+                        </div>
+                        {item.warranty_end_date && (
+                          <p className="text-xs text-slate-500 mt-1">
+                            Ends: {formatDate(item.warranty_end_date)}
+                          </p>
+                        )}
                       </div>
                     </div>
 
