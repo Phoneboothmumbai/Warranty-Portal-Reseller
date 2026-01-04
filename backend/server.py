@@ -4807,22 +4807,46 @@ async def create_company_ticket(data: ServiceTicketCreate, user: dict = Depends(
 <p><em>No replacement parts recorded for this device.</em></p>
 """
 
-    # Add AMC Contract if available
+    # Add AMC Contract if available (new system)
     if amc_contract:
-        amc_status = "[ACTIVE]" if is_warranty_active(amc_contract.get('end_date', '')) else "[EXPIRED]"
+        amc_end = amc_contract.get('coverage_end') or amc_contract.get('end_date', '')
+        amc_start = amc_contract.get('coverage_start') or amc_contract.get('start_date', '')
+        amc_status = "[ACTIVE]" if is_warranty_active(amc_end) else "[EXPIRED]"
         osticket_message += f"""
 <hr>
 <h3>AMC CONTRACT DETAILS</h3>
 <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
-<tr><td><strong>Contract Number</strong></td><td>{amc_contract.get('contract_number', 'N/A')}</td></tr>
+<tr><td><strong>Contract Number</strong></td><td>{amc_contract.get('contract_number', amc_contract.get('name', 'N/A'))}</td></tr>
 <tr><td><strong>AMC Status</strong></td><td><strong>{amc_status}</strong></td></tr>
-<tr><td><strong>Contract Type</strong></td><td>{amc_contract.get('contract_type', 'N/A')}</td></tr>
-<tr><td><strong>Start Date</strong></td><td>{format_date(amc_contract.get('start_date'))}</td></tr>
-<tr><td><strong>End Date</strong></td><td>{format_date(amc_contract.get('end_date'))}</td></tr>
+<tr><td><strong>Contract Type</strong></td><td>{amc_contract.get('contract_type', amc_contract.get('amc_type', 'N/A'))}</td></tr>
+<tr><td><strong>Coverage Start</strong></td><td>{format_date(amc_start)}</td></tr>
+<tr><td><strong>Coverage End</strong></td><td>{format_date(amc_end)}</td></tr>
 <tr><td><strong>Coverage Type</strong></td><td>{amc_contract.get('coverage_type', 'N/A')}</td></tr>
-<tr><td><strong>Service Visits Allowed</strong></td><td>{amc_contract.get('service_visits', 'N/A')}</td></tr>
-<tr><td><strong>Contract Value</strong></td><td>{amc_contract.get('value', 'N/A')}</td></tr>
+<tr><td><strong>Service Visits Allowed</strong></td><td>{amc_contract.get('service_visits', amc_contract.get('visits_allowed', 'N/A'))}</td></tr>
+<tr><td><strong>Contract Value</strong></td><td>{amc_contract.get('value', amc_contract.get('contract_value', 'N/A'))}</td></tr>
+<tr><td><strong>Coverage Includes</strong></td><td>{', '.join(amc_contract.get('coverage_includes', [])) if amc_contract.get('coverage_includes') else 'N/A'}</td></tr>
 </table>
+"""
+    # Add Legacy AMC if available and no new AMC contract
+    elif legacy_amc:
+        legacy_amc_status = "[ACTIVE]" if is_warranty_active(legacy_amc.get('end_date', '')) else "[EXPIRED]"
+        osticket_message += f"""
+<hr>
+<h3>AMC DETAILS (Legacy)</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>AMC Status</strong></td><td><strong>{legacy_amc_status}</strong></td></tr>
+<tr><td><strong>Start Date</strong></td><td>{format_date(legacy_amc.get('start_date'))}</td></tr>
+<tr><td><strong>End Date</strong></td><td>{format_date(legacy_amc.get('end_date'))}</td></tr>
+<tr><td><strong>Provider</strong></td><td>{legacy_amc.get('provider', 'N/A')}</td></tr>
+<tr><td><strong>Coverage Type</strong></td><td>{legacy_amc.get('coverage_type', 'N/A')}</td></tr>
+<tr><td><strong>Notes</strong></td><td>{legacy_amc.get('notes', 'N/A')}</td></tr>
+</table>
+"""
+    else:
+        osticket_message += """
+<hr>
+<h3>AMC DETAILS</h3>
+<p><em>No active AMC contract found for this device.</em></p>
 """
 
     # Add Deployment Info if available
@@ -4838,6 +4862,28 @@ async def create_company_ticket(data: ServiceTicketCreate, user: dict = Depends(
 <tr><td><strong>Notes</strong></td><td>{deployment.get('notes', 'N/A')}</td></tr>
 </table>
 """
+
+    # Add Previous Tickets for this device
+    if previous_tickets and len(previous_tickets) > 1:  # More than just the current ticket
+        osticket_message += f"""
+<hr>
+<h3>PREVIOUS TICKETS FOR THIS DEVICE ({len(previous_tickets) - 1} prior)</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr style="background-color: #f0f0f0;">
+<th>Ticket #</th><th>Subject</th><th>Status</th><th>Created</th>
+</tr>
+"""
+        for prev_ticket in previous_tickets:
+            if prev_ticket.get('ticket_number') != ticket.ticket_number:  # Exclude current ticket
+                osticket_message += f"""
+<tr>
+<td>{prev_ticket.get('ticket_number', 'N/A')}</td>
+<td>{prev_ticket.get('subject', 'N/A')[:50]}{'...' if len(prev_ticket.get('subject', '')) > 50 else ''}</td>
+<td>{prev_ticket.get('status', 'N/A').upper()}</td>
+<td>{format_date(prev_ticket.get('created_at'))}</td>
+</tr>
+"""
+        osticket_message += "</table>"
 
     # Add Service History if available
     if service_history:
