@@ -185,6 +185,113 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
     status: Optional[str] = None
 
+# ==================== COMPANY USER MODELS (Portal Login) ====================
+
+class CompanyUser(BaseModel):
+    """User accounts for company portal login"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
+    email: str
+    password_hash: str
+    name: str
+    phone: Optional[str] = None
+    role: str = "company_viewer"  # company_admin, company_viewer
+    is_active: bool = True
+    is_deleted: bool = False
+    last_login: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
+    created_by: Optional[str] = None  # admin who created this user
+
+class CompanyUserCreate(BaseModel):
+    company_id: str
+    email: str
+    password: str
+    name: str
+    phone: Optional[str] = None
+    role: str = "company_viewer"
+
+class CompanyUserUpdate(BaseModel):
+    email: Optional[str] = None
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class CompanyUserRegister(BaseModel):
+    """Self-registration for company users"""
+    company_code: str  # Company must provide their code to register
+    email: str
+    password: str
+    name: str
+    phone: Optional[str] = None
+
+class CompanyLogin(BaseModel):
+    email: str
+    password: str
+
+# ==================== SERVICE TICKET MODELS ====================
+
+class ServiceTicket(BaseModel):
+    """Service tickets created by company users"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    ticket_number: str = Field(default_factory=lambda: f"TKT-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:6].upper()}")
+    company_id: str
+    device_id: str
+    created_by: str  # company_user_id
+    issue_category: str  # hardware, software, network, other
+    priority: str = "medium"  # low, medium, high, critical
+    subject: str
+    description: str
+    status: str = "open"  # open, in_progress, resolved, closed
+    sla_status: str = "on_track"  # on_track, at_risk, breached
+    attachments: List[str] = Field(default_factory=list)
+    comments: List[dict] = Field(default_factory=list)
+    assigned_to: Optional[str] = None  # admin user
+    resolved_at: Optional[str] = None
+    closed_at: Optional[str] = None
+    is_deleted: bool = False
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
+    updated_at: str = Field(default_factory=lambda: get_ist_isoformat())
+
+class ServiceTicketCreate(BaseModel):
+    device_id: str
+    issue_category: str
+    subject: str
+    description: str
+    attachments: List[str] = []
+
+class ServiceTicketComment(BaseModel):
+    comment: str
+    attachments: List[str] = []
+
+# ==================== RENEWAL REQUEST MODELS ====================
+
+class RenewalRequest(BaseModel):
+    """Warranty/AMC renewal requests from companies"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    request_number: str = Field(default_factory=lambda: f"REN-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:6].upper()}")
+    company_id: str
+    request_type: str  # warranty_renewal, amc_renewal, amc_upgrade
+    device_id: Optional[str] = None
+    amc_contract_id: Optional[str] = None
+    requested_by: str  # company_user_id
+    notes: Optional[str] = None
+    status: str = "pending"  # pending, reviewed, approved, rejected
+    admin_notes: Optional[str] = None
+    processed_by: Optional[str] = None
+    processed_at: Optional[str] = None
+    is_deleted: bool = False
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
+
+class RenewalRequestCreate(BaseModel):
+    request_type: str
+    device_id: Optional[str] = None
+    amc_contract_id: Optional[str] = None
+    notes: Optional[str] = None
+
 # ==================== DEVICE / ASSET MODELS ====================
 
 class Device(BaseModel):
