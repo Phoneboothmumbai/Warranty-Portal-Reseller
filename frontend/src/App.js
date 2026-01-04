@@ -1,7 +1,8 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider } from "./context/AuthContext";
 import { SettingsProvider } from "./context/SettingsContext";
+import { CompanyAuthProvider } from "./context/CompanyAuthContext";
 
 // Public Pages
 import LandingPage from "./pages/public/LandingPage";
@@ -25,6 +26,22 @@ import AMCContracts from "./pages/admin/AMCContracts";
 import Sites from "./pages/admin/Sites";
 import Deployments from "./pages/admin/Deployments";
 import Licenses from "./pages/admin/Licenses";
+
+// Company Portal Pages
+import CompanyLayout from "./layouts/CompanyLayout";
+import CompanyLogin from "./pages/company/CompanyLogin";
+import CompanyRegister from "./pages/company/CompanyRegister";
+import CompanyDashboard from "./pages/company/CompanyDashboard";
+import CompanyDevices from "./pages/company/CompanyDevices";
+import CompanyDeviceDetails from "./pages/company/CompanyDeviceDetails";
+import CompanyTickets from "./pages/company/CompanyTickets";
+import CompanyTicketDetails from "./pages/company/CompanyTicketDetails";
+import CompanyAMC from "./pages/company/CompanyAMC";
+import CompanyDeployments from "./pages/company/CompanyDeployments";
+import CompanyUsers from "./pages/company/CompanyUsers";
+import CompanySites from "./pages/company/CompanySites";
+import CompanyProfile from "./pages/company/CompanyProfile";
+import CompanyWarranty from "./pages/company/CompanyWarranty";
 
 function App() {
   return (
