@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Any
 import uuid
 from datetime import datetime, timezone, timedelta
+import httpx
 
 # Indian Standard Time (IST = UTC+5:30)
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -46,6 +47,10 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# osTicket Configuration
+OSTICKET_URL = os.environ.get('OSTICKET_URL', '')
+OSTICKET_API_KEY = os.environ.get('OSTICKET_API_KEY', '')
 
 # JWT Config
 SECRET_KEY = os.environ.get('JWT_SECRET', 'warranty-portal-secret-key-change-in-prod')
