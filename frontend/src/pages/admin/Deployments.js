@@ -85,6 +85,8 @@ const Deployments = () => {
     zone_location: '',
     installation_date: '',
     warranty_start_date: '',
+    warranty_duration: 12,
+    warranty_duration_unit: 'months',
     warranty_end_date: '',
     warranty_type: 'manufacturer',
     amc_contract_id: '',
