@@ -4578,10 +4578,45 @@ async def create_company_ticket(data: ServiceTicketCreate, user: dict = Depends(
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
     
-    # Get company details for osTicket
-    company = await db.companies.find_one({"id": user["company_id"]}, {"_id": 0, "name": 1})
-    company_name = company.get("name", "Unknown") if company else "Unknown"
+    # Get ALL related data for comprehensive osTicket message
+    # 1. Company details
+    company = await db.companies.find_one({"id": user["company_id"]}, {"_id": 0})
     
+    # 2. Site details (if device has site_id)
+    site = None
+    if device.get("site_id"):
+        site = await db.sites.find_one({"id": device["site_id"]}, {"_id": 0})
+    
+    # 3. Assigned user details (if device has assigned_user_id)
+    assigned_user = None
+    if device.get("assigned_user_id"):
+        assigned_user = await db.users.find_one({"id": device["assigned_user_id"]}, {"_id": 0})
+    
+    # 4. Service history for this device
+    service_history = await db.service_history.find(
+        {"device_id": device["id"], "is_deleted": {"$ne": True}},
+        {"_id": 0}
+    ).sort("service_date", -1).limit(10).to_list(10)
+    
+    # 5. AMC contract details
+    amc_assignment = await db.amc_device_assignments.find_one({
+        "device_id": device["id"],
+        "status": "active"
+    }, {"_id": 0})
+    
+    amc_contract = None
+    if amc_assignment:
+        amc_contract = await db.amc_contracts.find_one(
+            {"id": amc_assignment.get("amc_contract_id")},
+            {"_id": 0}
+        )
+    
+    # 6. Deployment details (if device came from deployment)
+    deployment = None
+    if device.get("deployment_id"):
+        deployment = await db.deployments.find_one({"id": device["deployment_id"]}, {"_id": 0})
+    
+    # Create the ticket
     ticket = ServiceTicket(
         company_id=user["company_id"],
         device_id=data.device_id,
@@ -4594,18 +4629,197 @@ async def create_company_ticket(data: ServiceTicketCreate, user: dict = Depends(
     
     await db.service_tickets.insert_one(ticket.model_dump())
     
-    # Sync to osTicket
-    device_info = f"{device.get('brand', '')} {device.get('model', '')} (S/N: {device.get('serial_number', '')})"
+    # Build comprehensive osTicket message
+    def format_date(date_str):
+        if not date_str:
+            return "N/A"
+        try:
+            if 'T' in str(date_str):
+                return str(date_str).split('T')[0]
+            return str(date_str)
+        except:
+            return str(date_str)
+    
+    # Calculate warranty status
+    warranty_status = "Unknown"
+    warranty_days_left = "N/A"
+    if device.get("warranty_end_date"):
+        try:
+            end_date = datetime.strptime(device["warranty_end_date"], '%Y-%m-%d')
+            today = get_ist_now().replace(tzinfo=None)
+            days_left = (end_date - today).days
+            if days_left < 0:
+                warranty_status = "❌ EXPIRED"
+                warranty_days_left = f"{abs(days_left)} days ago"
+            elif days_left <= 30:
+                warranty_status = "⚠️ EXPIRING SOON"
+                warranty_days_left = f"{days_left} days remaining"
+            else:
+                warranty_status = "✅ ACTIVE"
+                warranty_days_left = f"{days_left} days remaining"
+        except:
+            pass
+    
     osticket_message = f"""
-<h3>Service Request from Warranty Portal</h3>
-<p><strong>Company:</strong> {company_name}</p>
-<p><strong>Submitted by:</strong> {user.get('name', 'Unknown')} ({user.get('email', '')})</p>
-<p><strong>Device:</strong> {device_info}</p>
-<p><strong>Category:</strong> {data.issue_category or 'General'}</p>
+<h2>🎫 Service Request from Warranty Portal</h2>
 <p><strong>Portal Ticket #:</strong> {ticket.ticket_number}</p>
+<p><strong>Issue Category:</strong> {data.issue_category or 'General'}</p>
+<p><strong>Priority:</strong> {data.priority if hasattr(data, 'priority') else 'Medium'}</p>
+
 <hr>
-<p><strong>Issue Description:</strong></p>
+<h3>📝 Issue Description</h3>
 <p>{data.description}</p>
+
+<hr>
+<h3>🏢 Company Information</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>Company Name</strong></td><td>{company.get('name', 'N/A') if company else 'N/A'}</td></tr>
+<tr><td><strong>Company Code</strong></td><td>{company.get('code', 'N/A') if company else 'N/A'}</td></tr>
+<tr><td><strong>Contact Person</strong></td><td>{company.get('contact_name', 'N/A') if company else 'N/A'}</td></tr>
+<tr><td><strong>Contact Email</strong></td><td>{company.get('contact_email', 'N/A') if company else 'N/A'}</td></tr>
+<tr><td><strong>Contact Phone</strong></td><td>{company.get('contact_phone', 'N/A') if company else 'N/A'}</td></tr>
+<tr><td><strong>Address</strong></td><td>{company.get('address', 'N/A') if company else 'N/A'}</td></tr>
+<tr><td><strong>City</strong></td><td>{company.get('city', 'N/A') if company else 'N/A'}</td></tr>
+<tr><td><strong>State</strong></td><td>{company.get('state', 'N/A') if company else 'N/A'}</td></tr>
+<tr><td><strong>GST Number</strong></td><td>{company.get('gst_number', 'N/A') if company else 'N/A'}</td></tr>
+</table>
+
+<hr>
+<h3>👤 Ticket Raised By</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>Name</strong></td><td>{user.get('name', 'N/A')}</td></tr>
+<tr><td><strong>Email</strong></td><td>{user.get('email', 'N/A')}</td></tr>
+<tr><td><strong>Phone</strong></td><td>{user.get('phone', 'N/A')}</td></tr>
+<tr><td><strong>Role</strong></td><td>{user.get('role', 'N/A')}</td></tr>
+</table>
+
+<hr>
+<h3>💻 Device Information</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>Serial Number</strong></td><td><strong>{device.get('serial_number', 'N/A')}</strong></td></tr>
+<tr><td><strong>Device Type</strong></td><td>{device.get('device_type', 'N/A')}</td></tr>
+<tr><td><strong>Category</strong></td><td>{device.get('category', 'N/A')}</td></tr>
+<tr><td><strong>Brand</strong></td><td>{device.get('brand', 'N/A')}</td></tr>
+<tr><td><strong>Model</strong></td><td>{device.get('model', 'N/A')}</td></tr>
+<tr><td><strong>Asset Tag</strong></td><td>{device.get('asset_tag', 'N/A')}</td></tr>
+<tr><td><strong>Condition</strong></td><td>{device.get('condition', 'N/A')}</td></tr>
+<tr><td><strong>Status</strong></td><td>{device.get('status', 'N/A')}</td></tr>
+<tr><td><strong>Purchase Date</strong></td><td>{format_date(device.get('purchase_date'))}</td></tr>
+<tr><td><strong>Purchase Cost</strong></td><td>{device.get('purchase_cost', 'N/A')}</td></tr>
+<tr><td><strong>Vendor</strong></td><td>{device.get('vendor', 'N/A')}</td></tr>
+<tr><td><strong>Location</strong></td><td>{device.get('location', 'N/A')}</td></tr>
+<tr><td><strong>Notes</strong></td><td>{device.get('notes', 'N/A')}</td></tr>
+</table>
+
+<hr>
+<h3>🛡️ Warranty Information</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>Warranty Status</strong></td><td><strong>{warranty_status}</strong></td></tr>
+<tr><td><strong>Warranty Start</strong></td><td>{format_date(device.get('warranty_start_date'))}</td></tr>
+<tr><td><strong>Warranty End</strong></td><td>{format_date(device.get('warranty_end_date'))}</td></tr>
+<tr><td><strong>Days Remaining</strong></td><td>{warranty_days_left}</td></tr>
+</table>
+"""
+
+    # Add Site Information if available
+    if site:
+        osticket_message += f"""
+<hr>
+<h3>📍 Site / Location Details</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>Site Name</strong></td><td>{site.get('name', 'N/A')}</td></tr>
+<tr><td><strong>Site Code</strong></td><td>{site.get('code', 'N/A')}</td></tr>
+<tr><td><strong>Address</strong></td><td>{site.get('address', 'N/A')}</td></tr>
+<tr><td><strong>City</strong></td><td>{site.get('city', 'N/A')}</td></tr>
+<tr><td><strong>State</strong></td><td>{site.get('state', 'N/A')}</td></tr>
+<tr><td><strong>Pincode</strong></td><td>{site.get('pincode', 'N/A')}</td></tr>
+<tr><td><strong>Contact Person</strong></td><td>{site.get('contact_person', 'N/A')}</td></tr>
+<tr><td><strong>Contact Phone</strong></td><td>{site.get('contact_phone', 'N/A')}</td></tr>
+<tr><td><strong>Contact Email</strong></td><td>{site.get('contact_email', 'N/A')}</td></tr>
+</table>
+"""
+
+    # Add Assigned User if available
+    if assigned_user:
+        osticket_message += f"""
+<hr>
+<h3>👤 Assigned User (Device User)</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>Name</strong></td><td>{assigned_user.get('name', 'N/A')}</td></tr>
+<tr><td><strong>Email</strong></td><td>{assigned_user.get('email', 'N/A')}</td></tr>
+<tr><td><strong>Phone</strong></td><td>{assigned_user.get('phone', 'N/A')}</td></tr>
+<tr><td><strong>Department</strong></td><td>{assigned_user.get('department', 'N/A')}</td></tr>
+<tr><td><strong>Designation</strong></td><td>{assigned_user.get('designation', 'N/A')}</td></tr>
+</table>
+"""
+
+    # Add AMC Contract if available
+    if amc_contract:
+        amc_status = "✅ ACTIVE" if is_warranty_active(amc_contract.get('end_date', '')) else "❌ EXPIRED"
+        osticket_message += f"""
+<hr>
+<h3>📋 AMC Contract Details</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>Contract Number</strong></td><td>{amc_contract.get('contract_number', 'N/A')}</td></tr>
+<tr><td><strong>AMC Status</strong></td><td><strong>{amc_status}</strong></td></tr>
+<tr><td><strong>Contract Type</strong></td><td>{amc_contract.get('contract_type', 'N/A')}</td></tr>
+<tr><td><strong>Start Date</strong></td><td>{format_date(amc_contract.get('start_date'))}</td></tr>
+<tr><td><strong>End Date</strong></td><td>{format_date(amc_contract.get('end_date'))}</td></tr>
+<tr><td><strong>Coverage Type</strong></td><td>{amc_contract.get('coverage_type', 'N/A')}</td></tr>
+<tr><td><strong>Service Visits Allowed</strong></td><td>{amc_contract.get('service_visits', 'N/A')}</td></tr>
+<tr><td><strong>Contract Value</strong></td><td>{amc_contract.get('value', 'N/A')}</td></tr>
+</table>
+"""
+
+    # Add Deployment Info if available
+    if deployment:
+        osticket_message += f"""
+<hr>
+<h3>📦 Deployment Information</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>Deployment Number</strong></td><td>{deployment.get('deployment_number', 'N/A')}</td></tr>
+<tr><td><strong>Deployment Date</strong></td><td>{format_date(deployment.get('deployment_date'))}</td></tr>
+<tr><td><strong>PO Number</strong></td><td>{deployment.get('po_number', 'N/A')}</td></tr>
+<tr><td><strong>Invoice Number</strong></td><td>{deployment.get('invoice_number', 'N/A')}</td></tr>
+<tr><td><strong>Notes</strong></td><td>{deployment.get('notes', 'N/A')}</td></tr>
+</table>
+"""
+
+    # Add Service History if available
+    if service_history:
+        osticket_message += f"""
+<hr>
+<h3>🔧 Service History (Last {len(service_history)} Records)</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr style="background-color: #f0f0f0;">
+<th>Date</th><th>Service Type</th><th>Problem</th><th>Resolution</th><th>Technician</th><th>Status</th>
+</tr>
+"""
+        for svc in service_history:
+            osticket_message += f"""
+<tr>
+<td>{format_date(svc.get('service_date'))}</td>
+<td>{svc.get('service_type', 'N/A')}</td>
+<td>{svc.get('problem_reported', 'N/A')[:50]}...</td>
+<td>{svc.get('resolution', 'N/A')[:50] if svc.get('resolution') else 'N/A'}...</td>
+<td>{svc.get('technician_name', 'N/A')}</td>
+<td>{svc.get('status', 'N/A')}</td>
+</tr>
+"""
+        osticket_message += "</table>"
+    else:
+        osticket_message += """
+<hr>
+<h3>🔧 Service History</h3>
+<p><em>No previous service records found for this device.</em></p>
+"""
+
+    osticket_message += f"""
+<hr>
+<p style="color: #666; font-size: 12px;">
+<em>This ticket was auto-generated from the Warranty & Asset Tracking Portal.<br>
+Ticket Created: {get_ist_isoformat()}</em>
+</p>
 """
     
     osticket_id = await create_osticket(
