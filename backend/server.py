@@ -788,7 +788,7 @@ def calculate_warranty_expiry(replaced_date: str, warranty_months: int) -> str:
 def is_warranty_active(expiry_date: str) -> bool:
     try:
         expiry = datetime.strptime(expiry_date, '%Y-%m-%d')
-        today = datetime.now()
+        today = get_ist_now()
         return today <= expiry
     except:
         return False
@@ -796,7 +796,7 @@ def is_warranty_active(expiry_date: str) -> bool:
 def days_until_expiry(expiry_date: str) -> int:
     try:
         expiry = datetime.strptime(expiry_date, '%Y-%m-%d')
-        today = datetime.now()
+        today = get_ist_now()
         return (expiry - today).days
     except:
         return -9999
@@ -1167,7 +1167,7 @@ async def generate_warranty_pdf(serial_number: str):
     body_style = ParagraphStyle('Body', parent=styles['Normal'], fontSize=10, spaceAfter=5, textColor=colors.HexColor('#64748B'))
     
     story.append(Paragraph(f"{portal_name} - Warranty Report", title_style))
-    story.append(Paragraph(f"Generated: {datetime.now().strftime('%d %B %Y, %H:%M')}", body_style))
+    story.append(Paragraph(f"Generated: {get_ist_now().strftime('%d %B %Y, %H:%M')}", body_style))
     story.append(Spacer(1, 20))
     
     story.append(Paragraph("Device Information", heading_style))
@@ -1279,7 +1279,7 @@ async def generate_warranty_pdf(serial_number: str):
     doc.build(story)
     buffer.seek(0)
     
-    filename = f"warranty_report_{serial_number}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    filename = f"warranty_report_{serial_number}_{get_ist_now().strftime('%Y%m%d')}.pdf"
     return StreamingResponse(
         buffer,
         media_type="application/pdf",
@@ -2300,7 +2300,7 @@ async def delete_amc(amc_id: str, admin: dict = Depends(get_current_admin)):
 
 def get_amc_status(start_date: str, end_date: str) -> str:
     """Calculate AMC status based on dates"""
-    today = datetime.now(timezone.utc).date()
+    today = get_ist_now().date()
     try:
         start = datetime.fromisoformat(start_date.replace('Z', '+00:00')).date() if 'T' in start_date else datetime.strptime(start_date, '%Y-%m-%d').date()
         end = datetime.fromisoformat(end_date.replace('Z', '+00:00')).date() if 'T' in end_date else datetime.strptime(end_date, '%Y-%m-%d').date()
@@ -2316,7 +2316,7 @@ def get_amc_status(start_date: str, end_date: str) -> str:
 
 def get_days_until_expiry(end_date: str) -> Optional[int]:
     """Calculate days until AMC expiry"""
-    today = datetime.now(timezone.utc).date()
+    today = get_ist_now().date()
     try:
         end = datetime.fromisoformat(end_date.replace('Z', '+00:00')).date() if 'T' in end_date else datetime.strptime(end_date, '%Y-%m-%d').date()
         return (end - today).days
@@ -3324,7 +3324,7 @@ def calculate_license_status(end_date: Optional[str], reminder_days: int = 30) -
     
     try:
         end = datetime.strptime(end_date, "%Y-%m-%d").date()
-        today = datetime.now().date()
+        today = get_ist_now().date()
         days_until_expiry = (end - today).days
         
         if days_until_expiry < 0:
@@ -3482,7 +3482,7 @@ async def get_expiring_licenses_summary(admin: dict = Depends(get_current_admin)
     """Get summary of expiring licenses"""
     licenses = await db.licenses.find({"is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
     
-    today = datetime.now().date()
+    today = get_ist_now().date()
     summary = {
         "total": len(licenses),
         "perpetual": 0,
@@ -3735,7 +3735,7 @@ async def get_dashboard_stats(admin: dict = Depends(get_current_admin)):
     parts_count = await db.parts.count_documents({"is_deleted": {"$ne": True}})
     services_count = await db.service_history.count_documents({})
     
-    today = datetime.now().strftime('%Y-%m-%d')
+    today = get_ist_now().strftime('%Y-%m-%d')
     active_warranties = await db.devices.count_documents({
         "is_deleted": {"$ne": True},
         "warranty_end_date": {"$gte": today}
@@ -3765,7 +3765,7 @@ async def get_dashboard_stats(admin: dict = Depends(get_current_admin)):
 @api_router.get("/admin/dashboard/alerts")
 async def get_dashboard_alerts(admin: dict = Depends(get_current_admin)):
     """Get warranty and AMC expiry alerts"""
-    today = datetime.now()
+    today = get_ist_now()
     
     alerts = {
         "warranty_expiring_7_days": [],
