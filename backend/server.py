@@ -80,7 +80,7 @@ class AdminUser(BaseModel):
     name: str
     password_hash: str
     role: str = "admin"
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class AdminLogin(BaseModel):
     email: str
@@ -103,7 +103,7 @@ class MasterItem(BaseModel):
     parent_id: Optional[str] = None  # For hierarchical data like models under brands
     is_active: bool = True
     sort_order: int = 0
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class MasterItemCreate(BaseModel):
     type: str
@@ -136,7 +136,7 @@ class Company(BaseModel):
     amc_status: str = "not_applicable"
     notes: Optional[str] = None
     is_deleted: bool = False
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class CompanyCreate(BaseModel):
     name: str
@@ -168,7 +168,7 @@ class User(BaseModel):
     role: str = "employee"
     status: str = "active"
     is_deleted: bool = False
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class UserCreate(BaseModel):
     company_id: str
@@ -211,7 +211,7 @@ class Device(BaseModel):
     deployment_item_index: Optional[int] = None
     site_id: Optional[str] = None
     is_deleted: bool = False
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class DeviceCreate(BaseModel):
     company_id: str
@@ -266,7 +266,7 @@ class AssignmentHistory(BaseModel):
     reason: Optional[str] = None
     changed_by: str
     changed_by_name: str
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 # ==================== SERVICE HISTORY ====================
 
@@ -276,7 +276,7 @@ class ServiceAttachment(BaseModel):
     original_name: str
     file_type: str
     file_size: int
-    uploaded_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    uploaded_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class ServiceHistory(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -313,7 +313,7 @@ class ServiceHistory(BaseModel):
     chargeable_reason: Optional[str] = None  # Why is it chargeable? (e.g., "Hardware parts excluded")
     created_by: str
     created_by_name: str
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class ServiceHistoryCreate(BaseModel):
     device_id: str
@@ -383,7 +383,7 @@ class Part(BaseModel):
     warranty_expiry_date: str
     notes: Optional[str] = None
     is_deleted: bool = False
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class PartCreate(BaseModel):
     device_id: str
@@ -408,7 +408,7 @@ class AMC(BaseModel):
     end_date: str
     notes: Optional[str] = None
     is_deleted: bool = False
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 # ==================== AMC V2 (Enhanced) ====================
 
@@ -449,8 +449,8 @@ class AMCContract(BaseModel):
     asset_mapping: dict = Field(default_factory=lambda: AMCAssetMapping().model_dump())
     internal_notes: Optional[str] = None
     is_deleted: bool = False
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
+    updated_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class AMCContractCreate(BaseModel):
     company_id: str
@@ -484,7 +484,7 @@ class AMCUsageRecord(BaseModel):
     usage_type: str  # onsite_visit, remote_support, preventive_maintenance
     usage_date: str
     notes: Optional[str] = None
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class AMCCreate(BaseModel):
     device_id: str
@@ -512,8 +512,8 @@ class Site(BaseModel):
     contact_email: Optional[str] = None
     notes: Optional[str] = None
     is_deleted: bool = False
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
+    updated_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class SiteCreate(BaseModel):
     company_id: str
@@ -570,8 +570,8 @@ class Deployment(BaseModel):
     is_deleted: bool = False
     created_by: str
     created_by_name: str
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
+    updated_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class DeploymentCreate(BaseModel):
     company_id: str
@@ -613,8 +613,8 @@ class License(BaseModel):
     status: str = "active"  # active, expiring, expired, cancelled
     notes: Optional[str] = None
     is_deleted: bool = False
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
+    updated_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class LicenseCreate(BaseModel):
     company_id: str
@@ -665,7 +665,7 @@ class AMCDeviceAssignment(BaseModel):
     coverage_source: str = "manual"  # manual, bulk_upload, filter_based
     status: str = "active"  # active, expired, suspended
     notes: Optional[str] = None
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
     created_by: Optional[str] = None
 
 class AMCDeviceAssignmentCreate(BaseModel):
@@ -710,7 +710,7 @@ class AuditLog(BaseModel):
     changes: dict  # {field: {old: x, new: y}}
     performed_by: str
     performed_by_name: str
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 # ==================== SETTINGS ====================
 
@@ -721,7 +721,7 @@ class Settings(BaseModel):
     logo_base64: Optional[str] = None
     accent_color: str = "#0F62FE"
     company_name: str = "Warranty Portal"
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
 class SettingsUpdate(BaseModel):
     logo_url: Optional[str] = None
@@ -2506,7 +2506,7 @@ async def update_amc_contract(contract_id: str, updates: AMCContractUpdate, admi
     if not update_data:
         raise HTTPException(status_code=400, detail="No updates provided")
     
-    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_at"] = get_ist_isoformat()
     
     changes = {k: {"old": existing.get(k), "new": v} for k, v in update_data.items() if existing.get(k) != v}
     
@@ -2543,7 +2543,7 @@ async def record_amc_usage(
         amc_contract_id=contract_id,
         service_id=service_id,
         usage_type=usage_type,
-        usage_date=datetime.now(timezone.utc).isoformat(),
+        usage_date=get_ist_isoformat(),
         notes=notes
     )
     
@@ -2780,7 +2780,7 @@ async def update_site(site_id: str, updates: SiteUpdate, admin: dict = Depends(g
     if not update_data:
         raise HTTPException(status_code=400, detail="No updates provided")
     
-    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_at"] = get_ist_isoformat()
     
     changes = {k: {"old": existing.get(k), "new": v} for k, v in update_data.items() if existing.get(k) != v}
     
@@ -2861,7 +2861,7 @@ async def create_deployment(data: DeploymentCreate, admin: dict = Depends(get_cu
                     "status": "active",
                     "condition": "new",
                     "is_deleted": False,
-                    "created_at": datetime.now(timezone.utc).isoformat()
+                    "created_at": get_ist_isoformat()
                 }
                 linked_device_ids.append(device_data["id"])
             
@@ -2906,7 +2906,7 @@ async def create_deployment(data: DeploymentCreate, admin: dict = Depends(get_cu
                     "status": "active",
                     "condition": "new",
                     "is_deleted": False,
-                    "created_at": datetime.now(timezone.utc).isoformat()
+                    "created_at": get_ist_isoformat()
                 }
                 await db.devices.insert_one(device_data)
     
@@ -2975,7 +2975,7 @@ async def update_deployment(deployment_id: str, updates: DeploymentUpdate, admin
     if not update_data:
         raise HTTPException(status_code=400, detail="No updates provided")
     
-    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_at"] = get_ist_isoformat()
     
     await db.deployments.update_one({"id": deployment_id}, {"$set": update_data})
     await log_audit("deployment", deployment_id, "update", update_data, admin)
@@ -3026,7 +3026,7 @@ async def add_deployment_item(deployment_id: str, item_data: dict, admin: dict =
                 "status": "active",
                 "condition": "new",
                 "is_deleted": False,
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": get_ist_isoformat()
             }
             await db.devices.insert_one(device_data)
             linked_device_ids.append(device_data["id"])
@@ -3038,7 +3038,7 @@ async def add_deployment_item(deployment_id: str, item_data: dict, admin: dict =
         {"id": deployment_id},
         {
             "$push": {"items": item.model_dump()},
-            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+            "$set": {"updated_at": get_ist_isoformat()}
         }
     )
     
@@ -3288,7 +3288,7 @@ async def get_settings(admin: dict = Depends(get_current_admin)):
 @api_router.put("/admin/settings")
 async def update_settings(updates: SettingsUpdate, admin: dict = Depends(get_current_admin)):
     update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
-    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_at"] = get_ist_isoformat()
     
     await db.settings.update_one(
         {"id": "settings"},
@@ -3309,7 +3309,7 @@ async def upload_logo(file: UploadFile = File(...), admin: dict = Depends(get_cu
     
     await db.settings.update_one(
         {"id": "settings"},
-        {"$set": {"logo_base64": logo_base64, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        {"$set": {"logo_base64": logo_base64, "updated_at": get_ist_isoformat()}},
         upsert=True
     )
     
@@ -3453,7 +3453,7 @@ async def update_license(license_id: str, updates: LicenseUpdate, admin: dict = 
     if not update_data:
         raise HTTPException(status_code=400, detail="No updates provided")
     
-    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_at"] = get_ist_isoformat()
     
     # Recalculate status if dates changed
     end_date = update_data.get("end_date", existing.get("end_date"))
