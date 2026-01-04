@@ -542,31 +542,27 @@ const Deployments = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="form-label">Company *</label>
-                <select
+                <SmartSelect
                   value={formData.company_id}
-                  onChange={(e) => setFormData({ ...formData, company_id: e.target.value, site_id: '' })}
-                  className="form-select"
+                  onValueChange={(val) => setFormData({ ...formData, company_id: val, site_id: '' })}
+                  options={companyOptions}
+                  placeholder="Search and select company..."
+                  searchPlaceholder="Search companies..."
+                  emptyText="No companies found"
                   disabled={!!editingDeployment}
-                >
-                  <option value="">Select Company</option>
-                  {companies.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
                 <label className="form-label">Site *</label>
-                <select
+                <SmartSelect
                   value={formData.site_id}
-                  onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}
-                  className="form-select"
+                  onValueChange={(val) => setFormData({ ...formData, site_id: val })}
+                  options={siteOptions}
+                  placeholder="Search and select site..."
+                  searchPlaceholder="Search sites..."
+                  emptyText={formData.company_id ? "No sites found for this company" : "Select a company first"}
                   disabled={!formData.company_id || !!editingDeployment}
-                >
-                  <option value="">Select Site</option>
-                  {companySites.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
 
