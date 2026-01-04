@@ -193,7 +193,12 @@ const Companies = () => {
                           <Building2 className="h-4 w-4 text-slate-600" />
                         </div>
                         <div>
-                          <p className="font-medium text-slate-900">{company.name}</p>
+                          <Link 
+                            to={`/admin/companies/${company.id}`} 
+                            className="font-medium text-slate-900 hover:text-[#0F62FE] hover:underline"
+                          >
+                            {company.name}
+                          </Link>
                           {company.gst_number && (
                             <p className="text-xs text-slate-500 font-mono">GST: {company.gst_number}</p>
                           )}
