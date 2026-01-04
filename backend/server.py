@@ -936,16 +936,17 @@ def calculate_warranty_expiry(replaced_date: str, warranty_months: int) -> str:
 def is_warranty_active(expiry_date: str) -> bool:
     try:
         expiry = datetime.strptime(expiry_date, '%Y-%m-%d')
-        today = get_ist_now()
-        return today <= expiry
+        # Compare without timezone info
+        today = get_ist_now().replace(tzinfo=None)
+        return today.date() <= expiry.date()
     except:
         return False
 
 def days_until_expiry(expiry_date: str) -> int:
     try:
         expiry = datetime.strptime(expiry_date, '%Y-%m-%d')
-        today = get_ist_now()
-        return (expiry - today).days
+        today = get_ist_now().replace(tzinfo=None)
+        return (expiry.date() - today.date()).days
     except:
         return -9999
 
