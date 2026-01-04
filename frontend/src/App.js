@@ -47,39 +47,61 @@ function App() {
   return (
     <SettingsProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <div className="noise-bg min-h-screen">
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/warranty/:serialNumber" element={<WarrantyResult />} />
-              
-              {/* Admin Routes */}
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin/setup" element={<AdminSetup />} />
-              
-              {/* Protected Admin Routes */}
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="companies" element={<Companies />} />
-                <Route path="companies/:companyId" element={<CompanyDetails />} />
-                <Route path="users" element={<Users />} />
-                <Route path="devices" element={<Devices />} />
-                <Route path="parts" element={<Parts />} />
-                <Route path="amc" element={<AMCManagement />} />
-                <Route path="amc-contracts" element={<AMCContracts />} />
-                <Route path="sites" element={<Sites />} />
-                <Route path="deployments" element={<Deployments />} />
-                <Route path="licenses" element={<Licenses />} />
-                <Route path="service-history" element={<ServiceHistory />} />
-                <Route path="master-data" element={<MasterData />} />
-                <Route path="settings" element={<Settings />} />
-              </Route>
-            </Routes>
-          </div>
-          <Toaster position="top-right" richColors />
-        </BrowserRouter>
+        <CompanyAuthProvider>
+          <BrowserRouter>
+            <div className="noise-bg min-h-screen">
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/warranty/:serialNumber" element={<WarrantyResult />} />
+                
+                {/* Admin Routes */}
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/setup" element={<AdminSetup />} />
+                
+                {/* Protected Admin Routes */}
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="companies" element={<Companies />} />
+                  <Route path="companies/:companyId" element={<CompanyDetails />} />
+                  <Route path="users" element={<Users />} />
+                  <Route path="devices" element={<Devices />} />
+                  <Route path="parts" element={<Parts />} />
+                  <Route path="amc" element={<AMCManagement />} />
+                  <Route path="amc-contracts" element={<AMCContracts />} />
+                  <Route path="sites" element={<Sites />} />
+                  <Route path="deployments" element={<Deployments />} />
+                  <Route path="licenses" element={<Licenses />} />
+                  <Route path="service-history" element={<ServiceHistory />} />
+                  <Route path="master-data" element={<MasterData />} />
+                  <Route path="settings" element={<Settings />} />
+                </Route>
+
+                {/* Company Portal Routes */}
+                <Route path="/company/login" element={<CompanyLogin />} />
+                <Route path="/company/register" element={<CompanyRegister />} />
+                
+                {/* Protected Company Routes */}
+                <Route path="/company" element={<CompanyLayout />}>
+                  <Route index element={<Navigate to="/company/dashboard" replace />} />
+                  <Route path="dashboard" element={<CompanyDashboard />} />
+                  <Route path="devices" element={<CompanyDevices />} />
+                  <Route path="devices/:deviceId" element={<CompanyDeviceDetails />} />
+                  <Route path="warranty" element={<CompanyWarranty />} />
+                  <Route path="amc" element={<CompanyAMC />} />
+                  <Route path="tickets" element={<CompanyTickets />} />
+                  <Route path="tickets/:ticketId" element={<CompanyTicketDetails />} />
+                  <Route path="deployments" element={<CompanyDeployments />} />
+                  <Route path="users" element={<CompanyUsers />} />
+                  <Route path="sites" element={<CompanySites />} />
+                  <Route path="profile" element={<CompanyProfile />} />
+                </Route>
+              </Routes>
+            </div>
+            <Toaster position="top-right" richColors />
+          </BrowserRouter>
+        </CompanyAuthProvider>
       </AuthProvider>
     </SettingsProvider>
   );
