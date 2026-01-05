@@ -59,6 +59,20 @@ const Devices = () => {
     fetchMasterData();
   }, [filterCompany, filterStatus, filterAMC]);
 
+  // Handle URL query parameter to open device details directly
+  useEffect(() => {
+    const deviceId = searchParams.get('id');
+    if (deviceId && devices.length > 0) {
+      const device = devices.find(d => d.id === deviceId);
+      if (device) {
+        setSelectedDevice(device);
+        setDetailModalOpen(true);
+        // Clear the URL parameter after opening
+        setSearchParams({});
+      }
+    }
+  }, [devices, searchParams]);
+
   const fetchMasterData = async () => {
     try {
       const [deviceTypesRes, brandsRes, conditionsRes, statusesRes] = await Promise.all([
