@@ -3,7 +3,7 @@ import axios from 'axios';
 import { 
   Plus, Search, Edit2, Trash2, Package, MoreVertical, Building2, MapPin,
   Eye, Calendar, ChevronDown, ChevronUp, X, Check, Server, Laptop, Camera, 
-  Wifi, Speaker, Monitor, HardDrive, FileText
+  Wifi, Speaker, Monitor, HardDrive, FileText, RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSearchParams } from 'react-router-dom';
