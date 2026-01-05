@@ -3328,7 +3328,9 @@ async def add_deployment_item(deployment_id: str, item_data: dict, admin: dict =
                 "company_id": deployment["company_id"],
                 "site_id": deployment["site_id"],
                 "deployment_id": deployment_id,
+                "source": "deployment",
                 "device_type": item.category,
+                "category": item.category,
                 "brand": item.brand or "Unknown",
                 "model": item.model or "Unknown",
                 "serial_number": serial,
@@ -3355,6 +3357,179 @@ async def add_deployment_item(deployment_id: str, item_data: dict, admin: dict =
     )
     
     return item.model_dump()
+
+@api_router.put("/admin/deployments/{deployment_id}/items/{item_index}")
+async def update_deployment_item(
+    deployment_id: str, 
+    item_index: int, 
+    item_data: dict, 
+    admin: dict = Depends(get_current_admin)
+):
+    """Update an item in a deployment and sync changes to devices"""
+    deployment = await db.deployments.find_one({"id": deployment_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not deployment:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    
+    items = deployment.get("items", [])
+    if item_index < 0 or item_index >= len(items):
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    old_item = items[item_index]
+    
+    # Merge updates with existing item
+    updated_item = {**old_item, **{k: v for k, v in item_data.items() if v is not None}}
+    
+    # Handle serial number changes - sync to devices
+    new_serials = item_data.get("serial_numbers", [])
+    old_serials = old_item.get("serial_numbers", [])
+    old_linked_ids = old_item.get("linked_device_ids", [])
+    
+    # If serial numbers are being added/updated
+    if new_serials and updated_item.get("is_serialized"):
+        new_linked_ids = []
+        
+        for i, serial in enumerate(new_serials):
+            if serial:  # Only process non-empty serial numbers
+                # Check if this serial was already linked to a device
+                if i < len(old_linked_ids) and old_linked_ids[i]:
+                    # Update existing device
+                    device_id = old_linked_ids[i]
+                    await db.devices.update_one(
+                        {"id": device_id},
+                        {"$set": {
+                            "serial_number": serial,
+                            "device_type": updated_item.get("category"),
+                            "category": updated_item.get("category"),
+                            "brand": updated_item.get("brand") or "Unknown",
+                            "model": updated_item.get("model") or "Unknown",
+                            "warranty_end_date": updated_item.get("warranty_end_date"),
+                            "location": updated_item.get("zone_location"),
+                            "updated_at": get_ist_isoformat()
+                        }}
+                    )
+                    new_linked_ids.append(device_id)
+                else:
+                    # Create new device for this serial
+                    device_data = {
+                        "id": str(uuid.uuid4()),
+                        "company_id": deployment["company_id"],
+                        "site_id": deployment["site_id"],
+                        "deployment_id": deployment_id,
+                        "deployment_item_index": item_index,
+                        "source": "deployment",
+                        "device_type": updated_item.get("category"),
+                        "category": updated_item.get("category"),
+                        "brand": updated_item.get("brand") or "Unknown",
+                        "model": updated_item.get("model") or "Unknown",
+                        "serial_number": serial,
+                        "purchase_date": updated_item.get("installation_date") or deployment["deployment_date"],
+                        "warranty_end_date": updated_item.get("warranty_end_date"),
+                        "location": updated_item.get("zone_location"),
+                        "status": "active",
+                        "condition": "new",
+                        "is_deleted": False,
+                        "created_at": get_ist_isoformat()
+                    }
+                    await db.devices.insert_one(device_data)
+                    new_linked_ids.append(device_data["id"])
+        
+        updated_item["linked_device_ids"] = new_linked_ids
+        updated_item["serial_numbers"] = new_serials
+    
+    # Update the item in deployment
+    items[item_index] = updated_item
+    await db.deployments.update_one(
+        {"id": deployment_id},
+        {"$set": {
+            "items": items,
+            "updated_at": get_ist_isoformat()
+        }}
+    )
+    
+    await log_audit("deployment", deployment_id, "update_item", {"item_index": item_index, "updates": item_data}, admin)
+    
+    return {"message": "Item updated successfully", "item": updated_item}
+
+@api_router.post("/admin/deployments/{deployment_id}/sync-devices")
+async def sync_deployment_devices(deployment_id: str, admin: dict = Depends(get_current_admin)):
+    """Manually sync deployment items to devices collection"""
+    deployment = await db.deployments.find_one({"id": deployment_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not deployment:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    
+    created_count = 0
+    updated_count = 0
+    
+    for item_idx, item in enumerate(deployment.get("items", [])):
+        if item.get("is_serialized") and item.get("serial_numbers"):
+            linked_ids = item.get("linked_device_ids", [])
+            new_linked_ids = []
+            
+            for i, serial in enumerate(item["serial_numbers"]):
+                if not serial:  # Skip empty serials
+                    continue
+                    
+                # Check if device already exists for this serial in this deployment
+                existing_device = await db.devices.find_one({
+                    "deployment_id": deployment_id,
+                    "serial_number": serial,
+                    "is_deleted": {"$ne": True}
+                }, {"_id": 0})
+                
+                if existing_device:
+                    # Update existing device
+                    await db.devices.update_one(
+                        {"id": existing_device["id"]},
+                        {"$set": {
+                            "device_type": item.get("category"),
+                            "category": item.get("category"),
+                            "brand": item.get("brand") or "Unknown",
+                            "model": item.get("model") or "Unknown",
+                            "warranty_end_date": item.get("warranty_end_date"),
+                            "location": item.get("zone_location"),
+                            "updated_at": get_ist_isoformat()
+                        }}
+                    )
+                    new_linked_ids.append(existing_device["id"])
+                    updated_count += 1
+                else:
+                    # Create new device
+                    device_data = {
+                        "id": str(uuid.uuid4()),
+                        "company_id": deployment["company_id"],
+                        "site_id": deployment["site_id"],
+                        "deployment_id": deployment_id,
+                        "deployment_item_index": item_idx,
+                        "source": "deployment",
+                        "device_type": item.get("category"),
+                        "category": item.get("category"),
+                        "brand": item.get("brand") or "Unknown",
+                        "model": item.get("model") or "Unknown",
+                        "serial_number": serial,
+                        "purchase_date": item.get("installation_date") or deployment.get("deployment_date"),
+                        "warranty_end_date": item.get("warranty_end_date"),
+                        "location": item.get("zone_location"),
+                        "status": "active",
+                        "condition": "new",
+                        "is_deleted": False,
+                        "created_at": get_ist_isoformat()
+                    }
+                    await db.devices.insert_one(device_data)
+                    new_linked_ids.append(device_data["id"])
+                    created_count += 1
+            
+            # Update linked_device_ids in deployment item
+            if new_linked_ids:
+                await db.deployments.update_one(
+                    {"id": deployment_id},
+                    {"$set": {f"items.{item_idx}.linked_device_ids": new_linked_ids}}
+                )
+    
+    return {
+        "message": f"Sync complete. Created {created_count} devices, updated {updated_count} devices.",
+        "created": created_count,
+        "updated": updated_count
+    }
 
 # ==================== UNIVERSAL SEARCH ====================
 
