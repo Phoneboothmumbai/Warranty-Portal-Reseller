@@ -230,48 +230,93 @@ const CompanyDeviceDetails = () => {
         </div>
       )}
 
-      {/* Related Tickets */}
-      {device.tickets && device.tickets.length > 0 && (
+      {/* Parts / Components */}
+      {parts && parts.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="px-6 py-4 border-b border-slate-100">
             <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-              <Ticket className="h-5 w-5 text-slate-400" />
-              Related Tickets
+              <Tag className="h-5 w-5 text-slate-400" />
+              Parts / Components
             </h2>
-            <Link 
-              to={`/company/tickets?device=${device.id}`}
-              className="text-sm text-emerald-600 hover:text-emerald-700"
-            >
-              View all
-            </Link>
           </div>
-          <div className="divide-y divide-slate-100">
-            {device.tickets.slice(0, 5).map((ticket) => (
-              <Link
-                key={ticket.id}
-                to={`/company/tickets/${ticket.id}`}
-                className="flex items-center justify-between p-4 hover:bg-slate-50"
-              >
-                <div>
-                  <p className="font-medium text-slate-900">{ticket.subject}</p>
-                  <p className="text-sm text-slate-500">{ticket.ticket_number}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    ticket.status === 'open' ? 'bg-amber-50 text-amber-700' :
-                    ticket.status === 'in_progress' ? 'bg-blue-50 text-blue-700' :
-                    ticket.status === 'resolved' ? 'bg-emerald-50 text-emerald-700' :
-                    'bg-slate-100 text-slate-600'
-                  }`}>
-                    {ticket.status?.replace('_', ' ')}
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-slate-400" />
-                </div>
-              </Link>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="text-left px-4 py-3 font-medium text-slate-600">Part Name</th>
+                  <th className="text-left px-4 py-3 font-medium text-slate-600">Serial #</th>
+                  <th className="text-left px-4 py-3 font-medium text-slate-600">Replaced</th>
+                  <th className="text-left px-4 py-3 font-medium text-slate-600">Warranty Expiry</th>
+                  <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {parts.map((part, index) => {
+                  const partExpiry = part.warranty_expiry_date ? new Date(part.warranty_expiry_date) : null;
+                  const isPartActive = partExpiry && partExpiry > new Date();
+                  return (
+                    <tr key={index}>
+                      <td className="px-4 py-3 font-medium text-slate-900">{part.part_name}</td>
+                      <td className="px-4 py-3 font-mono text-slate-600">{part.serial_number || '-'}</td>
+                      <td className="px-4 py-3 text-slate-600">{formatDate(part.replaced_date)}</td>
+                      <td className="px-4 py-3 text-slate-600">{formatDate(part.warranty_expiry_date)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          isPartActive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                        }`}>
+                          {isPartActive ? 'Covered' : 'Expired'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
+
+      {/* AMC Information */}
+      {amcInfo && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <FileText className="h-5 w-5 text-slate-400" />
+            AMC Contract
+          </h2>
+          <dl className="space-y-3">
+            <div className="flex justify-between py-2 border-b border-slate-100">
+              <dt className="text-slate-500">Contract Name</dt>
+              <dd className="font-medium text-slate-900">{amcInfo.contract_name || 'N/A'}</dd>
+            </div>
+            <div className="flex justify-between py-2 border-b border-slate-100">
+              <dt className="text-slate-500">Type</dt>
+              <dd className="font-medium text-slate-900">{amcInfo.amc_type || 'N/A'}</dd>
+            </div>
+            <div className="flex justify-between py-2 border-b border-slate-100">
+              <dt className="text-slate-500">Coverage Start</dt>
+              <dd className="font-medium text-slate-900">{formatDate(amcInfo.coverage_start)}</dd>
+            </div>
+            <div className="flex justify-between py-2 border-b border-slate-100">
+              <dt className="text-slate-500">Coverage End</dt>
+              <dd className="font-medium text-slate-900">{formatDate(amcInfo.coverage_end)}</dd>
+            </div>
+            {amcInfo.coverage_includes && amcInfo.coverage_includes.length > 0 && (
+              <div className="py-2">
+                <dt className="text-slate-500 mb-2">Coverage Includes</dt>
+                <dd className="flex flex-wrap gap-2">
+                  {amcInfo.coverage_includes.map((item, idx) => (
+                    <span key={idx} className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full">
+                      {item}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+
+      {/* Related Tickets - removed since tickets aren't returned from this API */}
     </div>
   );
 };
