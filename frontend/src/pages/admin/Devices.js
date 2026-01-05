@@ -9,13 +9,14 @@ import { toast } from 'sonner';
 import { SmartSelect } from '../../components/ui/smart-select';
 import { DateDurationInput } from '../../components/ui/date-duration-input';
 import { QuickCreateCompany, QuickCreateUser, QuickCreateMaster } from '../../components/forms';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Devices = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [devices, setDevices] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [users, setUsers] = useState([]);
