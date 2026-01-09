@@ -5374,13 +5374,16 @@ Ticket Created: {get_ist_isoformat()}</em>
 </p>
 """
     
-    osticket_id = await create_osticket(
+    osticket_result = await create_osticket(
         email=user.get("email", "noreply@warranty-portal.com"),
         name=user.get("name", "Portal User"),
         subject=f"[{ticket.ticket_number}] {data.subject}",
         message=osticket_message,
         phone=user.get("phone", "")
     )
+    
+    osticket_id = osticket_result.get("ticket_id")
+    osticket_error = osticket_result.get("error")
     
     # Update ticket with osTicket reference if created successfully
     if osticket_id:
@@ -5393,7 +5396,8 @@ Ticket Created: {get_ist_isoformat()}</em>
         "message": "Ticket created successfully", 
         "ticket_number": ticket.ticket_number, 
         "id": ticket.id,
-        "osticket_id": osticket_id
+        "osticket_id": osticket_id,
+        "osticket_error": osticket_error
     }
 
 @api_router.get("/company/tickets/{ticket_id}")
