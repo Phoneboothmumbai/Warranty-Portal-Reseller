@@ -172,5 +172,38 @@ All bulk imports will include: Download Template → Upload & Preview → Valida
 ## Future/Backlog
 - WhatsApp Integration
 - PDF Export for Service History
-- Fix eslint/lint warnings
-- Backend refactoring (split server.py into routers/services)
+- Fix eslint/lint warnings (P2)
+
+## Backend Refactoring (COMPLETED - Jan 9, 2026)
+The monolithic `server.py` has been refactored into a modular architecture:
+
+### New Structure
+```
+/app/backend/
+├── server.py              # Main server (routes only, ~5300 lines)
+├── config.py              # Environment variables & constants
+├── database.py            # MongoDB connection
+├── models/                # Pydantic models
+│   ├── auth.py            # Token, AdminUser
+│   ├── common.py          # MasterItem, AuditLog, Settings
+│   ├── company.py         # Company, User, CompanyUser
+│   ├── device.py          # Device, Part, ConsumableOrder
+│   ├── service.py         # ServiceTicket, ServiceHistory
+│   ├── amc.py             # AMC, AMCContract
+│   ├── site.py            # Site, Deployment
+│   ├── license.py         # License
+│   └── supplies.py        # SupplyCategory, SupplyProduct, SupplyOrder
+├── services/              # Business logic
+│   ├── auth.py            # Auth helpers (password hashing, JWT)
+│   ├── osticket.py        # osTicket integration
+│   └── seeding.py         # Default data seeding
+└── utils/
+    └── helpers.py         # Utility functions (IST time, warranty calc)
+```
+
+### Benefits
+- **Reduced main file**: From 6547 lines to 5314 lines (~19% reduction)
+- **Better maintainability**: Models, services, and utilities are now separate
+- **Easier testing**: Individual modules can be unit tested
+- **Clearer separation of concerns**: Config, DB, models, services all isolated
+
