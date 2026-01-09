@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Plus, Search, Edit2, Trash2, Laptop, MoreVertical, Building2, User, Calendar, Eye, History, FileText, Shield, CheckCircle, XCircle, Clock, AlertTriangle, ExternalLink, MapPin, Package } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Laptop, MoreVertical, Building2, User, Calendar, Eye, History, FileText, Shield, CheckCircle, XCircle, Clock, AlertTriangle, ExternalLink, MapPin, Package, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -12,6 +12,17 @@ import { QuickCreateCompany, QuickCreateUser, QuickCreateMaster } from '../../co
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Empty consumable item template
+const emptyConsumable = {
+  id: '',
+  name: '',
+  consumable_type: 'Toner Cartridge',
+  model_number: '',
+  brand: '',
+  color: '',
+  notes: ''
+};
 
 const Devices = () => {
   const { token } = useAuth();
@@ -52,11 +63,8 @@ const Devices = () => {
     condition: 'good',
     status: 'active',
     notes: '',
-    // Consumable fields for printers
-    consumable_type: '',
-    consumable_model: '',
-    consumable_brand: '',
-    consumable_notes: ''
+    // Multiple consumables for printers
+    consumables: []
   });
 
   useEffect(() => {
