@@ -135,19 +135,27 @@ const AdminLayout = () => {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) => `
-                  sidebar-link ${isActive ? 'active' : ''}
-                `}
-                data-testid={`nav-${item.label.toLowerCase()}`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </NavLink>
+            {navItems.map((item, index) => (
+              item.type === 'divider' ? (
+                <div key={`divider-${index}`} className="pt-4 pb-2">
+                  <p className="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    {item.label}
+                  </p>
+                </div>
+              ) : (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={({ isActive }) => `
+                    sidebar-link ${isActive ? 'active' : ''}
+                  `}
+                  data-testid={`nav-${item.label.toLowerCase()}`}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </NavLink>
+              )
             ))}
           </nav>
 
