@@ -328,6 +328,11 @@ class Device(BaseModel):
     deployment_id: Optional[str] = None
     deployment_item_index: Optional[int] = None
     site_id: Optional[str] = None
+    # Consumable details (for printers, etc.)
+    consumable_type: Optional[str] = None  # Toner, Ink Cartridge, Drum, etc.
+    consumable_model: Optional[str] = None  # e.g., HP 26A, Canon 325
+    consumable_brand: Optional[str] = None  # Brand of consumable
+    consumable_notes: Optional[str] = None  # Any special notes
     is_deleted: bool = False
     created_at: str = Field(default_factory=lambda: get_ist_isoformat())
 
@@ -352,6 +357,11 @@ class DeviceCreate(BaseModel):
     deployment_id: Optional[str] = None
     deployment_item_index: Optional[int] = None
     site_id: Optional[str] = None
+    # Consumable details (for printers, etc.)
+    consumable_type: Optional[str] = None
+    consumable_model: Optional[str] = None
+    consumable_brand: Optional[str] = None
+    consumable_notes: Optional[str] = None
 
 class DeviceUpdate(BaseModel):
     company_id: Optional[str] = None
@@ -370,6 +380,11 @@ class DeviceUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
     site_id: Optional[str] = None
+    # Consumable details
+    consumable_type: Optional[str] = None
+    consumable_model: Optional[str] = None
+    consumable_brand: Optional[str] = None
+    consumable_notes: Optional[str] = None
 
 # ==================== ASSIGNMENT HISTORY ====================
 
