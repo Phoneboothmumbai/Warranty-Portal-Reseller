@@ -123,17 +123,30 @@ class TestBulkImportCompanies:
         """Test bulk import with duplicate company code"""
         unique_id = str(uuid.uuid4())[:6].upper()
         
-        # First import
-        records = [{"name": f"TEST_DupCode_{unique_id}", "company_code": f"DUP{unique_id}"}]
+        # First import with all required fields
+        records = [{
+            "name": f"TEST_DupCode_{unique_id}", 
+            "company_code": f"DUP{unique_id}",
+            "contact_name": "Test Contact",
+            "contact_email": f"test.dup.{unique_id}@test.com",
+            "contact_phone": "9876543210"
+        }]
         response = requests.post(
             f"{BASE_URL}/api/admin/bulk-import/companies",
             json={"records": records},
             headers=admin_headers
         )
         assert response.status_code == 200
+        assert response.json()["success"] == 1
         
         # Second import with same code
-        records = [{"name": f"TEST_DupCode2_{unique_id}", "company_code": f"DUP{unique_id}"}]
+        records = [{
+            "name": f"TEST_DupCode2_{unique_id}", 
+            "company_code": f"DUP{unique_id}",
+            "contact_name": "Test Contact 2",
+            "contact_email": f"test.dup2.{unique_id}@test.com",
+            "contact_phone": "9876543211"
+        }]
         response = requests.post(
             f"{BASE_URL}/api/admin/bulk-import/companies",
             json={"records": records},
