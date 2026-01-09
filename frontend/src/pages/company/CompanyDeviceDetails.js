@@ -4,10 +4,11 @@ import axios from 'axios';
 import { 
   Laptop, ArrowLeft, Shield, Calendar, MapPin, Building2, Tag,
   Clock, AlertTriangle, CheckCircle2, XCircle, Ticket, FileText,
-  ChevronRight, Wrench
+  ChevronRight, Wrench, Package, ShoppingCart
 } from 'lucide-react';
 import { useCompanyAuth } from '../../context/CompanyAuthContext';
 import { Button } from '../../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
