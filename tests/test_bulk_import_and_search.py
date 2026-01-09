@@ -256,20 +256,10 @@ class TestBulkImportDevices:
         """Test successful bulk import of devices"""
         unique_id = str(uuid.uuid4())[:6].upper()
         
-        # Get a company
-        companies_response = requests.get(
-            f"{BASE_URL}/api/admin/companies",
-            headers=admin_headers
-        )
-        assert companies_response.status_code == 200
-        companies = companies_response.json()
-        assert len(companies) > 0
-        
-        company = companies[0]
-        
+        # Use company name for lookup
         records = [
             {
-                "company_code": company.get("company_code"),
+                "company_name": "Acme Corporation",
                 "device_type": "Laptop",
                 "brand": "Dell",
                 "model": "Latitude 5520",
@@ -292,7 +282,7 @@ class TestBulkImportDevices:
         data = response.json()
         assert "success" in data
         assert "errors" in data
-        assert data["success"] >= 1, f"Expected at least 1 successful import, got {data['success']}"
+        assert data["success"] >= 1, f"Expected at least 1 successful import, got {data['success']}. Errors: {data.get('errors')}"
     
     def test_bulk_import_devices_missing_serial(self, admin_headers):
         """Test bulk import devices with missing serial number"""
