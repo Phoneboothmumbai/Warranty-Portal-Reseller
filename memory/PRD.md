@@ -93,6 +93,7 @@ Build an enterprise-grade Warranty & Asset Tracking Portal with:
 - **Office Supplies Feature (COMPLETED):**
   - **Company Portal** (`/company/office-supplies`):
     - Catalog view with categories (Stationery, Printer Consumables)
+    - **Search bar** to filter products across categories
     - Add items to cart with +/- quantity controls
     - "View Cart" button appears when items are added
     - Place Order modal with delivery location selection
@@ -113,6 +114,21 @@ Build an enterprise-grade Warranty & Asset Tracking Portal with:
     - osTicket integration for order tickets
     - Full CRUD APIs for categories, products, orders
   - **Testing:** 22/22 backend tests passed (100%)
+
+- **Bulk Import Feature (COMPLETED):**
+  - **Reusable BulkImport Component** (`/app/frontend/src/components/ui/bulk-import.jsx`)
+  - **Admin Panel Pages with Bulk Import:**
+    - Companies: CSV import with template download
+    - Sites: Import linked to companies by code or name
+    - Devices: Import linked to companies by code or name
+    - Supply Products: Import with auto-create category
+  - **Features:**
+    - Download CSV template with sample data
+    - Preview data before import
+    - Validation errors shown per row
+    - Import progress and results summary
+    - Duplicate detection (company code, serial numbers)
+  - **Testing:** 17/17 backend tests passed (100%)
 
 ## Company Portal Credentials
 - **URL:** /company/login
