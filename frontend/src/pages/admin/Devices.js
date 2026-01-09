@@ -878,65 +878,126 @@ const Devices = () => {
             {/* Consumable Details - Show only for Printers */}
             {formData.device_type?.toLowerCase().includes('printer') && (
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-4">
-                <h4 className="text-sm font-semibold text-amber-800 uppercase tracking-wider flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  Consumable Details (for Ink/Toner Orders)
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-amber-800 uppercase tracking-wider flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Consumables ({formData.consumables.length})
+                  </h4>
+                  <Button 
+                    type="button" 
+                    size="sm" 
+                    onClick={addConsumable}
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                    data-testid="add-consumable-btn"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Consumable
+                  </Button>
+                </div>
                 <p className="text-xs text-amber-700">
-                  These details will be used when customers order consumables for this printer.
+                  Define all ink/toner cartridges this printer uses. Customers can select which ones to order.
                 </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="form-label">Consumable Type</label>
-                    <select
-                      value={formData.consumable_type}
-                      onChange={(e) => setFormData({ ...formData, consumable_type: e.target.value })}
-                      className="form-select"
-                      data-testid="consumable-type-select"
-                    >
-                      <option value="">Select type...</option>
-                      <option value="Toner Cartridge">Toner Cartridge</option>
-                      <option value="Ink Cartridge">Ink Cartridge</option>
-                      <option value="Drum Unit">Drum Unit</option>
-                      <option value="Ink Tank">Ink Tank</option>
-                      <option value="Ribbon">Ribbon</option>
-                      <option value="Other">Other</option>
-                    </select>
+                
+                {formData.consumables.length === 0 ? (
+                  <div className="text-center py-6 text-amber-600 border border-dashed border-amber-300 rounded-lg">
+                    <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No consumables defined yet</p>
+                    <p className="text-xs">Click "Add Consumable" to add ink/toner cartridges</p>
                   </div>
-                  <div>
-                    <label className="form-label">Consumable Model/Part No.</label>
-                    <input
-                      type="text"
-                      value={formData.consumable_model}
-                      onChange={(e) => setFormData({ ...formData, consumable_model: e.target.value })}
-                      className="form-input"
-                      placeholder="e.g., HP 26A, Canon 325"
-                      data-testid="consumable-model-input"
-                    />
+                ) : (
+                  <div className="space-y-3">
+                    {formData.consumables.map((consumable, index) => (
+                      <div key={consumable.id || index} className="bg-white p-3 rounded-lg border border-amber-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-amber-700">Consumable #{index + 1}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeConsumable(index)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                            data-testid={`remove-consumable-${index}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="text-xs text-slate-600">Name *</label>
+                            <input
+                              type="text"
+                              value={consumable.name}
+                              onChange={(e) => updateConsumable(index, 'name', e.target.value)}
+                              className="form-input text-sm"
+                              placeholder="e.g., Black Toner"
+                              data-testid={`consumable-name-${index}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-600">Type</label>
+                            <select
+                              value={consumable.consumable_type}
+                              onChange={(e) => updateConsumable(index, 'consumable_type', e.target.value)}
+                              className="form-select text-sm"
+                            >
+                              <option value="Toner Cartridge">Toner Cartridge</option>
+                              <option value="Ink Cartridge">Ink Cartridge</option>
+                              <option value="Drum Unit">Drum Unit</option>
+                              <option value="Ink Tank">Ink Tank</option>
+                              <option value="Ribbon">Ribbon</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-600">Model/Part No. *</label>
+                            <input
+                              type="text"
+                              value={consumable.model_number}
+                              onChange={(e) => updateConsumable(index, 'model_number', e.target.value)}
+                              className="form-input text-sm"
+                              placeholder="e.g., HP 26A"
+                              data-testid={`consumable-model-${index}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-600">Color</label>
+                            <select
+                              value={consumable.color || ''}
+                              onChange={(e) => updateConsumable(index, 'color', e.target.value)}
+                              className="form-select text-sm"
+                            >
+                              <option value="">None</option>
+                              <option value="Black">Black</option>
+                              <option value="Cyan">Cyan</option>
+                              <option value="Magenta">Magenta</option>
+                              <option value="Yellow">Yellow</option>
+                              <option value="Photo Black">Photo Black</option>
+                              <option value="Tri-Color">Tri-Color</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-600">Brand</label>
+                            <input
+                              type="text"
+                              value={consumable.brand || ''}
+                              onChange={(e) => updateConsumable(index, 'brand', e.target.value)}
+                              className="form-input text-sm"
+                              placeholder="e.g., HP, Canon"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-600">Notes</label>
+                            <input
+                              type="text"
+                              value={consumable.notes || ''}
+                              onChange={(e) => updateConsumable(index, 'notes', e.target.value)}
+                              className="form-input text-sm"
+                              placeholder="Yield info..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="form-label">Consumable Brand</label>
-                    <input
-                      type="text"
-                      value={formData.consumable_brand}
-                      onChange={(e) => setFormData({ ...formData, consumable_brand: e.target.value })}
-                      className="form-input"
-                      placeholder="e.g., HP, Canon, Brother"
-                    />
-                  </div>
-                  <div>
-                    <label className="form-label">Consumable Notes</label>
-                    <input
-                      type="text"
-                      value={formData.consumable_notes}
-                      onChange={(e) => setFormData({ ...formData, consumable_notes: e.target.value })}
-                      className="form-input"
-                      placeholder="Compatible models, yield info..."
-                    />
-                  </div>
-                </div>
+                )}
               </div>
             )}
             
