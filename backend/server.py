@@ -5862,6 +5862,387 @@ async def delete_company_user(user_id: str, admin: dict = Depends(get_current_ad
     
     return {"message": "User deleted"}
 
+# ==================== OFFICE SUPPLIES ADMIN ENDPOINTS ====================
+
+@api_router.get("/admin/supply-categories")
+async def list_supply_categories(admin: dict = Depends(get_current_admin)):
+    """List all supply categories"""
+    categories = await db.supply_categories.find(
+        {"is_deleted": {"$ne": True}},
+        {"_id": 0}
+    ).sort("sort_order", 1).to_list(100)
+    return categories
+
+@api_router.post("/admin/supply-categories")
+async def create_supply_category(data: SupplyCategoryCreate, admin: dict = Depends(get_current_admin)):
+    """Create a new supply category"""
+    category = SupplyCategory(**data.model_dump())
+    await db.supply_categories.insert_one(category.model_dump())
+    return category.model_dump()
+
+@api_router.put("/admin/supply-categories/{category_id}")
+async def update_supply_category(category_id: str, data: SupplyCategoryUpdate, admin: dict = Depends(get_current_admin)):
+    """Update a supply category"""
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+    
+    result = await db.supply_categories.update_one(
+        {"id": category_id, "is_deleted": {"$ne": True}},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    updated = await db.supply_categories.find_one({"id": category_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/admin/supply-categories/{category_id}")
+async def delete_supply_category(category_id: str, admin: dict = Depends(get_current_admin)):
+    """Soft delete a supply category"""
+    result = await db.supply_categories.update_one(
+        {"id": category_id},
+        {"$set": {"is_deleted": True}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return {"message": "Category deleted"}
+
+@api_router.get("/admin/supply-products")
+async def list_supply_products(category_id: Optional[str] = None, admin: dict = Depends(get_current_admin)):
+    """List all supply products, optionally filtered by category"""
+    query = {"is_deleted": {"$ne": True}}
+    if category_id:
+        query["category_id"] = category_id
+    
+    products = await db.supply_products.find(query, {"_id": 0}).to_list(500)
+    
+    # Add category name to each product
+    categories = {c["id"]: c["name"] for c in await db.supply_categories.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(100)}
+    for product in products:
+        product["category_name"] = categories.get(product["category_id"], "Unknown")
+    
+    return products
+
+@api_router.post("/admin/supply-products")
+async def create_supply_product(data: SupplyProductCreate, admin: dict = Depends(get_current_admin)):
+    """Create a new supply product"""
+    # Verify category exists
+    category = await db.supply_categories.find_one({"id": data.category_id, "is_deleted": {"$ne": True}})
+    if not category:
+        raise HTTPException(status_code=400, detail="Category not found")
+    
+    product = SupplyProduct(**data.model_dump())
+    await db.supply_products.insert_one(product.model_dump())
+    
+    result = product.model_dump()
+    result["category_name"] = category["name"]
+    return result
+
+@api_router.put("/admin/supply-products/{product_id}")
+async def update_supply_product(product_id: str, data: SupplyProductUpdate, admin: dict = Depends(get_current_admin)):
+    """Update a supply product"""
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+    
+    # If category is being changed, verify it exists
+    if "category_id" in update_data:
+        category = await db.supply_categories.find_one({"id": update_data["category_id"], "is_deleted": {"$ne": True}})
+        if not category:
+            raise HTTPException(status_code=400, detail="Category not found")
+    
+    result = await db.supply_products.update_one(
+        {"id": product_id, "is_deleted": {"$ne": True}},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    updated = await db.supply_products.find_one({"id": product_id}, {"_id": 0})
+    category = await db.supply_categories.find_one({"id": updated["category_id"]}, {"_id": 0})
+    updated["category_name"] = category["name"] if category else "Unknown"
+    return updated
+
+@api_router.delete("/admin/supply-products/{product_id}")
+async def delete_supply_product(product_id: str, admin: dict = Depends(get_current_admin)):
+    """Soft delete a supply product"""
+    result = await db.supply_products.update_one(
+        {"id": product_id},
+        {"$set": {"is_deleted": True}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return {"message": "Product deleted"}
+
+@api_router.get("/admin/supply-orders")
+async def list_supply_orders(
+    status: Optional[str] = None,
+    company_id: Optional[str] = None,
+    admin: dict = Depends(get_current_admin)
+):
+    """List all supply orders with optional filters"""
+    query = {"is_deleted": {"$ne": True}}
+    if status:
+        query["status"] = status
+    if company_id:
+        query["company_id"] = company_id
+    
+    orders = await db.supply_orders.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return orders
+
+@api_router.get("/admin/supply-orders/{order_id}")
+async def get_supply_order(order_id: str, admin: dict = Depends(get_current_admin)):
+    """Get a specific supply order"""
+    order = await db.supply_orders.find_one({"id": order_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+@api_router.put("/admin/supply-orders/{order_id}")
+async def update_supply_order(order_id: str, data: dict, admin: dict = Depends(get_current_admin)):
+    """Update supply order status and admin notes"""
+    allowed_fields = ["status", "admin_notes"]
+    update_data = {k: v for k, v in data.items() if k in allowed_fields and v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid data to update")
+    
+    # Add processing info
+    update_data["processed_by"] = admin.get("name", admin.get("email"))
+    update_data["processed_at"] = get_ist_isoformat()
+    
+    result = await db.supply_orders.update_one(
+        {"id": order_id, "is_deleted": {"$ne": True}},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    updated = await db.supply_orders.find_one({"id": order_id}, {"_id": 0})
+    return updated
+
+# ==================== OFFICE SUPPLIES COMPANY ENDPOINTS ====================
+
+@api_router.get("/company/supply-catalog")
+async def get_supply_catalog(user: dict = Depends(get_current_company_user)):
+    """Get supply catalog (categories with their products) for ordering"""
+    # Get active categories
+    categories = await db.supply_categories.find(
+        {"is_deleted": {"$ne": True}, "is_active": True},
+        {"_id": 0}
+    ).sort("sort_order", 1).to_list(100)
+    
+    # Get active products
+    products = await db.supply_products.find(
+        {"is_deleted": {"$ne": True}, "is_active": True},
+        {"_id": 0, "internal_notes": 0}  # Exclude internal notes from company view
+    ).to_list(500)
+    
+    # Group products by category
+    products_by_category = {}
+    for product in products:
+        cat_id = product["category_id"]
+        if cat_id not in products_by_category:
+            products_by_category[cat_id] = []
+        products_by_category[cat_id].append(product)
+    
+    # Combine categories with their products
+    catalog = []
+    for category in categories:
+        category["products"] = products_by_category.get(category["id"], [])
+        if category["products"]:  # Only include categories that have products
+            catalog.append(category)
+    
+    return catalog
+
+@api_router.post("/company/supply-orders")
+async def create_supply_order(data: dict, user: dict = Depends(get_current_company_user)):
+    """Create a new supply order"""
+    items = data.get("items", [])
+    if not items:
+        raise HTTPException(status_code=400, detail="No items in order")
+    
+    delivery = data.get("delivery_location", {})
+    if not delivery:
+        raise HTTPException(status_code=400, detail="Delivery location is required")
+    
+    # Get company info
+    company = await db.companies.find_one({"id": user["company_id"]}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=400, detail="Company not found")
+    
+    # Validate products and build order items
+    order_items = []
+    for item in items:
+        product = await db.supply_products.find_one(
+            {"id": item["product_id"], "is_deleted": {"$ne": True}, "is_active": True},
+            {"_id": 0}
+        )
+        if not product:
+            raise HTTPException(status_code=400, detail=f"Product {item['product_id']} not found or inactive")
+        
+        category = await db.supply_categories.find_one({"id": product["category_id"]}, {"_id": 0})
+        
+        order_items.append({
+            "product_id": product["id"],
+            "product_name": product["name"],
+            "category_name": category["name"] if category else "Unknown",
+            "quantity": item.get("quantity", 1),
+            "unit": product["unit"]
+        })
+    
+    # Process delivery location
+    delivery_location = {"type": delivery.get("type", "existing")}
+    
+    if delivery.get("type") == "existing" and delivery.get("site_id"):
+        site = await db.sites.find_one({"id": delivery["site_id"]}, {"_id": 0})
+        if site:
+            delivery_location.update({
+                "site_id": site["id"],
+                "site_name": site["name"],
+                "address": site.get("address"),
+                "city": site.get("city"),
+                "pincode": site.get("pincode"),
+                "contact_person": site.get("contact_person"),
+                "contact_phone": site.get("contact_phone")
+            })
+    else:
+        # New location
+        delivery_location.update({
+            "type": "new",
+            "address": delivery.get("address"),
+            "city": delivery.get("city"),
+            "pincode": delivery.get("pincode"),
+            "contact_person": delivery.get("contact_person"),
+            "contact_phone": delivery.get("contact_phone")
+        })
+    
+    # Create order
+    order = SupplyOrder(
+        company_id=user["company_id"],
+        company_name=company.get("name", "Unknown"),
+        requested_by=user["id"],
+        requested_by_name=user.get("name", "Unknown"),
+        requested_by_email=user.get("email", ""),
+        requested_by_phone=user.get("phone"),
+        delivery_location=delivery_location,
+        items=order_items,
+        notes=data.get("notes")
+    )
+    
+    await db.supply_orders.insert_one(order.model_dump())
+    
+    # Build osTicket message
+    items_table = """
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr style="background-color: #f0f0f0;">
+<th>#</th><th>Item</th><th>Category</th><th>Quantity</th><th>Unit</th>
+</tr>
+"""
+    for idx, item in enumerate(order_items, 1):
+        items_table += f"""
+<tr>
+<td>{idx}</td>
+<td><strong>{item['product_name']}</strong></td>
+<td>{item['category_name']}</td>
+<td><strong>{item['quantity']}</strong></td>
+<td>{item['unit']}</td>
+</tr>
+"""
+    items_table += "</table>"
+    
+    # Format delivery address
+    delivery_addr = delivery_location.get("address", "")
+    if delivery_location.get("city"):
+        delivery_addr += f", {delivery_location['city']}"
+    if delivery_location.get("pincode"):
+        delivery_addr += f" - {delivery_location['pincode']}"
+    
+    osticket_message = f"""
+<h2>OFFICE SUPPLIES ORDER</h2>
+<p><strong>Order Number:</strong> {order.order_number}</p>
+<p><strong>Order Type:</strong> Office Supplies</p>
+<p><strong>Order Date:</strong> {order.created_at.split('T')[0]}</p>
+<p><strong>Status:</strong> REQUESTED</p>
+
+<hr>
+<h3>ITEMS ORDERED ({len(order_items)} items)</h3>
+{items_table}
+
+<hr>
+<h3>DELIVERY LOCATION</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>Location Type</strong></td><td>{delivery_location.get('type', 'N/A').upper()}</td></tr>
+{f"<tr><td><strong>Site Name</strong></td><td>{delivery_location.get('site_name', 'N/A')}</td></tr>" if delivery_location.get('site_name') else ""}
+<tr><td><strong>Address</strong></td><td>{delivery_addr or 'N/A'}</td></tr>
+<tr><td><strong>Contact Person</strong></td><td>{delivery_location.get('contact_person', 'N/A')}</td></tr>
+<tr><td><strong>Contact Phone</strong></td><td>{delivery_location.get('contact_phone', 'N/A')}</td></tr>
+</table>
+
+<hr>
+<h3>COMPANY INFORMATION</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>Company Name</strong></td><td>{company.get('name', 'N/A')}</td></tr>
+<tr><td><strong>Company ID</strong></td><td>{company.get('company_code') or company.get('id', 'N/A')}</td></tr>
+<tr><td><strong>Contact Email</strong></td><td>{company.get('contact_email', 'N/A')}</td></tr>
+<tr><td><strong>Contact Phone</strong></td><td>{company.get('contact_phone', 'N/A')}</td></tr>
+</table>
+
+<hr>
+<h3>REQUESTED BY</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+<tr><td><strong>Name</strong></td><td>{user.get('name', 'N/A')}</td></tr>
+<tr><td><strong>Email</strong></td><td>{user.get('email', 'N/A')}</td></tr>
+<tr><td><strong>Phone</strong></td><td>{user.get('phone', 'N/A')}</td></tr>
+</table>
+
+{f"<hr><h3>SPECIAL INSTRUCTIONS / NOTES</h3><p>{order.notes}</p>" if order.notes else ""}
+
+<hr>
+<p style="color: #666; font-size: 12px;">
+<em>This order was submitted from the Warranty & Asset Tracking Portal.<br>
+Order Created: {get_ist_isoformat()}</em>
+</p>
+"""
+    
+    # Create osTicket
+    osticket_result = await create_osticket(
+        email=user.get("email", "noreply@warranty-portal.com"),
+        name=user.get("name", "Portal User"),
+        subject=f"[{order.order_number}] Office Supplies Order - {company.get('name', 'Company')}",
+        message=osticket_message,
+        phone=user.get("phone", "")
+    )
+    
+    osticket_id = osticket_result.get("ticket_id")
+    osticket_error = osticket_result.get("error")
+    
+    # Update order with osTicket ID
+    if osticket_id:
+        await db.supply_orders.update_one(
+            {"id": order.id},
+            {"$set": {"osticket_id": osticket_id}}
+        )
+    
+    return {
+        "message": "Order submitted successfully",
+        "order_number": order.order_number,
+        "id": order.id,
+        "items_count": len(order_items),
+        "osticket_id": osticket_id,
+        "osticket_error": osticket_error
+    }
+
+@api_router.get("/company/supply-orders")
+async def list_company_supply_orders(user: dict = Depends(get_current_company_user)):
+    """List supply orders for the company"""
+    orders = await db.supply_orders.find(
+        {"company_id": user["company_id"], "is_deleted": {"$ne": True}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return orders
+
 # Include the router
 app.include_router(api_router)
 
