@@ -202,7 +202,7 @@ const CompanyDeviceDetails = () => {
               Warranty: {warranty.label}
             </div>
             <div className="flex flex-wrap gap-2">
-              {isPrinter && (
+              {canOrderConsumables && (
                 <Button 
                   onClick={() => setOrderModalOpen(true)}
                   variant="outline"
@@ -210,7 +210,7 @@ const CompanyDeviceDetails = () => {
                   data-testid="order-consumables-btn"
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
-                  Order Consumables
+                  Order Consumables ({device.consumables.length})
                 </Button>
               )}
               <Link to={`/company/tickets?device=${device.id}`}>
