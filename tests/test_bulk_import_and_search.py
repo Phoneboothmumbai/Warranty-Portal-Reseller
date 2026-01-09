@@ -309,18 +309,10 @@ class TestBulkImportDevices:
         """Test bulk import devices with duplicate serial number"""
         unique_id = str(uuid.uuid4())[:6].upper()
         
-        # Get a company
-        companies_response = requests.get(
-            f"{BASE_URL}/api/admin/companies",
-            headers=admin_headers
-        )
-        companies = companies_response.json()
-        company = companies[0]
-        
-        # First import
+        # First import using company name
         records = [
             {
-                "company_code": company.get("company_code"),
+                "company_name": "Acme Corporation",
                 "device_type": "Laptop",
                 "brand": "Dell",
                 "model": "Test",
@@ -333,6 +325,7 @@ class TestBulkImportDevices:
             headers=admin_headers
         )
         assert response.status_code == 200
+        assert response.json()["success"] == 1, f"First import should succeed. Errors: {response.json().get('errors')}"
         
         # Second import with same serial
         response = requests.post(
