@@ -79,6 +79,17 @@ Build an enterprise-grade Warranty & Asset Tracking Portal with:
   - All 11 backend API tests passing
   - All frontend UI features verified working
 
+- **Multi-Consumable Support Enhancement (COMPLETED):**
+  - Admin Panel: Can add MULTIPLE consumables per printer (Black, Cyan, Magenta, Yellow toners)
+  - Each consumable has: Name, Type, Model/Part No., Color, Brand, Notes
+  - Company Portal: Shows list of all available consumables with checkboxes
+  - Company Portal: Users select which consumables to order with individual quantities
+  - Order Summary shows total items and units
+  - osTicket ticket includes table of all ordered items
+  - Backward compatible - legacy single-item orders still work
+  - All 13 backend API tests passing (100%)
+  - All frontend UI features verified working
+
 ## Company Portal Credentials
 - **URL:** /company/login
 - **Test Company Code:** ACME001
