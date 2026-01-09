@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Laptop, Shield, FileText, Ticket, Package, 
-  Users, MapPin, User, LogOut, Menu, X, ChevronDown, Building2
+  Users, MapPin, User, LogOut, Menu, X, ChevronDown, Building2, ShoppingBag
 } from 'lucide-react';
 import { useCompanyAuth } from '../context/CompanyAuthContext';
 
@@ -12,6 +12,7 @@ const navItems = [
   { to: '/company/warranty', icon: Shield, label: 'Warranty & Coverage' },
   { to: '/company/amc', icon: FileText, label: 'AMC / Contracts' },
   { to: '/company/tickets', icon: Ticket, label: 'Service Requests' },
+  { to: '/company/office-supplies', icon: ShoppingBag, label: 'Office Supplies' },
   { to: '/company/deployments', icon: Package, label: 'Deployments' },
   { to: '/company/users', icon: Users, label: 'Users / Contacts' },
   { to: '/company/sites', icon: MapPin, label: 'Sites' },
