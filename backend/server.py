@@ -4911,13 +4911,16 @@ Order Created: {get_ist_isoformat()}</em>
 
     # Create osTicket
     consumable_info = f"{order.consumable_type or 'Consumable'} - {order.consumable_model or device.get('model', '')}"
-    osticket_id = await create_osticket(
+    osticket_result = await create_osticket(
         email=user.get("email", "noreply@warranty-portal.com"),
         name=user.get("name", "Portal User"),
         subject=f"[{order.order_number}] Consumable Order: {consumable_info}",
         message=osticket_message,
         phone=user.get("phone", "")
     )
+    
+    osticket_id = osticket_result.get("ticket_id")
+    osticket_error = osticket_result.get("error")
     
     # Update order with osTicket ID
     if osticket_id:
@@ -4930,7 +4933,8 @@ Order Created: {get_ist_isoformat()}</em>
         "message": "Consumable order submitted successfully",
         "order_number": order.order_number,
         "id": order.id,
-        "osticket_id": osticket_id
+        "osticket_id": osticket_id,
+        "osticket_error": osticket_error
     }
 
 @api_router.get("/company/consumable-orders")
