@@ -174,6 +174,33 @@ All bulk imports will include: Download Template → Upload & Preview → Valida
 - PDF Export for Service History
 - Fix eslint/lint warnings (P2)
 
+## QR Code Asset Labels & Quick Service Request (COMPLETED - Jan 9, 2026)
+New feature for IT teams to quickly access device info and report issues via QR scan.
+
+### Features Implemented
+1. **QR Code Generation**
+   - Endpoint: `GET /api/device/{serial}/qr` returns PNG QR code
+   - QR links to public device page `/device/{serial}`
+   - Custom size support via `?size=` parameter
+   - Admin can download QR from Devices page dropdown menu
+
+2. **Public Device Page** (`/device/:identifier`)
+   - Shows device details, warranty status, AMC coverage
+   - Displays recent service history
+   - Shows replaced parts with warranty status
+   - No login required
+
+3. **Quick Service Request (No Login)**
+   - Endpoint: `POST /api/device/{serial}/quick-request`
+   - Form: Name, Email, Phone (optional), Issue Category, Description
+   - Creates ticket with QSR- prefix (e.g., QSR-20260109-ABC123)
+   - Stores in `quick_service_requests` collection
+   - Integrates with osTicket (IP restricted to production)
+
+### Backend Test Results
+- 20/20 tests passed (100%)
+- Test file: `/app/tests/test_qr_code_quick_request.py`
+
 ## Backend Refactoring (COMPLETED - Jan 9, 2026)
 The monolithic `server.py` has been refactored into a modular architecture:
 
