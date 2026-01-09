@@ -51,7 +51,12 @@ const Devices = () => {
     location: '',
     condition: 'good',
     status: 'active',
-    notes: ''
+    notes: '',
+    // Consumable fields for printers
+    consumable_type: '',
+    consumable_model: '',
+    consumable_brand: '',
+    consumable_notes: ''
   });
 
   useEffect(() => {
@@ -204,7 +209,11 @@ const Devices = () => {
       location: '',
       condition: 'good',
       status: 'active',
-      notes: ''
+      notes: '',
+      consumable_type: '',
+      consumable_model: '',
+      consumable_brand: '',
+      consumable_notes: ''
     });
     if (filterCompany) {
       fetchCompanyUsers(filterCompany);
@@ -231,7 +240,11 @@ const Devices = () => {
       location: device.location || '',
       condition: device.condition || 'good',
       status: device.status,
-      notes: device.notes || ''
+      notes: device.notes || '',
+      consumable_type: device.consumable_type || '',
+      consumable_model: device.consumable_model || '',
+      consumable_brand: device.consumable_brand || '',
+      consumable_notes: device.consumable_notes || ''
     });
     await fetchCompanyUsers(device.company_id);
     setModalOpen(true);
