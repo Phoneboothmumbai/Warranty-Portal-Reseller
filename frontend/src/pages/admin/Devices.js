@@ -626,6 +626,16 @@ const Devices = () => {
                               <Edit2 className="h-4 w-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDownloadQR(device)}>
+                              <QrCode className="h-4 w-4 mr-2" />
+                              Download QR Code
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenPublicPage(device)}>
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              View Public Page
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => handleDelete(device)}
                               className="text-red-600"
