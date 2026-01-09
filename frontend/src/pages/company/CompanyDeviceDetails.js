@@ -408,8 +408,14 @@ const CompanyDeviceDetails = () => {
       )}
 
       {/* Order Consumables Modal */}
-      <Dialog open={orderModalOpen} onOpenChange={setOrderModalOpen}>
-        <DialogContent className="max-w-md">
+      <Dialog open={orderModalOpen} onOpenChange={(open) => {
+        setOrderModalOpen(open);
+        if (!open) {
+          setSelectedConsumables({});
+          setOrderNotes('');
+        }
+      }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-amber-600" />
@@ -425,40 +431,88 @@ const CompanyDeviceDetails = () => {
               <p className="text-xs text-slate-500 font-mono">{device.serial_number}</p>
             </div>
 
-            {/* Consumable Details */}
-            {(device.consumable_type || device.consumable_model) && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <p className="text-sm font-medium text-amber-800 mb-2">Configured Consumable:</p>
-                <div className="text-sm text-amber-700 space-y-1">
-                  {device.consumable_type && <p>Type: {device.consumable_type}</p>}
-                  {device.consumable_model && <p>Model/Part: {device.consumable_model}</p>}
-                  {device.consumable_brand && <p>Brand: {device.consumable_brand}</p>}
-                </div>
+            {/* Consumable Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Select Consumables to Order
+              </label>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {device.consumables?.map((consumable) => {
+                  const isSelected = selectedConsumables[consumable.id] !== undefined;
+                  return (
+                    <div 
+                      key={consumable.id}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        isSelected 
+                          ? 'border-amber-500 bg-amber-50' 
+                          : 'border-slate-200 hover:border-amber-300'
+                      }`}
+                      onClick={() => toggleConsumable(consumable.id)}
+                      data-testid={`consumable-item-${consumable.id}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            className="h-4 w-4 text-amber-600 rounded border-slate-300"
+                          />
+                          <div>
+                            <p className="font-medium text-slate-900">
+                              {consumable.name}
+                              {consumable.color && (
+                                <span className="ml-2 text-xs px-2 py-0.5 bg-slate-100 rounded">
+                                  {consumable.color}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {consumable.consumable_type} • {consumable.model_number}
+                              {consumable.brand && ` • ${consumable.brand}`}
+                            </p>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                            <label className="text-xs text-slate-500">Qty:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={selectedConsumables[consumable.id]}
+                              onChange={(e) => updateConsumableQty(consumable.id, e.target.value)}
+                              className="w-16 px-2 py-1 text-sm border border-amber-300 rounded focus:outline-none focus:ring-1 focus:ring-amber-500"
+                              data-testid={`consumable-qty-${consumable.id}`}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Order Summary */}
+            {Object.keys(selectedConsumables).length > 0 && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                <p className="text-sm font-medium text-emerald-800">
+                  Order Summary: {Object.keys(selectedConsumables).length} item(s), 
+                  {' '}{Object.values(selectedConsumables).reduce((a, b) => a + b, 0)} unit(s)
+                </p>
               </div>
             )}
 
-            {/* Order Form */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Quantity</label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={orderForm.quantity}
-                onChange={(e) => setOrderForm({ ...orderForm, quantity: parseInt(e.target.value) || 1 })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                data-testid="consumable-quantity-input"
-              />
-            </div>
-
+            {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Notes (Optional)</label>
               <textarea
-                value={orderForm.notes}
-                onChange={(e) => setOrderForm({ ...orderForm, notes: e.target.value })}
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
                 placeholder="Any special requirements or instructions..."
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                rows={3}
+                rows={2}
                 data-testid="consumable-notes-input"
               />
             </div>
@@ -477,7 +531,7 @@ const CompanyDeviceDetails = () => {
               </Button>
               <Button 
                 onClick={handleOrderConsumable}
-                disabled={orderLoading}
+                disabled={orderLoading || Object.keys(selectedConsumables).length === 0}
                 className="bg-amber-600 hover:bg-amber-700 text-white"
                 data-testid="submit-consumable-order-btn"
               >
