@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Plus, Search, Edit2, Trash2, Laptop, MoreVertical, Building2, User, Calendar, Eye, History, FileText, Shield, CheckCircle, XCircle, Clock, AlertTriangle, ExternalLink, MapPin, Package, X } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Laptop, MoreVertical, Building2, User, Calendar, Eye, History, FileText, Shield, CheckCircle, XCircle, Clock, AlertTriangle, ExternalLink, MapPin, Package, X, QrCode, Download } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../../components/ui/dropdown-menu';
 import { BulkImport } from '../../components/ui/bulk-import';
 import { toast } from 'sonner';
 import { SmartSelect } from '../../components/ui/smart-select';
