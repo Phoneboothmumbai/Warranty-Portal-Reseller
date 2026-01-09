@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Building2, Users, Laptop, Wrench, 
-  FileCheck, Settings, LogOut, Shield, Menu, X, ChevronRight, Database, History, FileText, MapPin, Package, Key
+  FileCheck, Settings, LogOut, Shield, Menu, X, ChevronRight, Database, History, FileText, MapPin, Package, Key, ShoppingBag, ClipboardList
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,10 @@ const navItems = [
   { path: '/admin/licenses', label: 'Licenses', icon: Key },
   { path: '/admin/service-history', label: 'Service History', icon: History },
   { path: '/admin/amc-contracts', label: 'AMC Contracts', icon: FileText },
+  { type: 'divider', label: 'Office Supplies' },
+  { path: '/admin/supply-products', label: 'Products', icon: ShoppingBag },
+  { path: '/admin/supply-orders', label: 'Orders', icon: ClipboardList },
+  { type: 'divider', label: 'Settings' },
   { path: '/admin/master-data', label: 'Master Data', icon: Database },
   { path: '/admin/settings', label: 'Settings', icon: Settings },
 ];
