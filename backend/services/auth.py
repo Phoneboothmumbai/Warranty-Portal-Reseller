@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Security dependency for JWT authentication
 security = HTTPBearer()
 
 
