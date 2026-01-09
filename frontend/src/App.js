@@ -42,6 +42,7 @@ import CompanyUsers from "./pages/company/CompanyUsers";
 import CompanySites from "./pages/company/CompanySites";
 import CompanyProfile from "./pages/company/CompanyProfile";
 import CompanyWarranty from "./pages/company/CompanyWarranty";
+import CompanyOfficeSupplies from "./pages/company/CompanyOfficeSupplies";
 
 function App() {
   return (
