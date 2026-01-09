@@ -219,10 +219,7 @@ const Devices = () => {
       condition: 'good',
       status: 'active',
       notes: '',
-      consumable_type: '',
-      consumable_model: '',
-      consumable_brand: '',
-      consumable_notes: ''
+      consumables: []
     });
     if (filterCompany) {
       fetchCompanyUsers(filterCompany);
@@ -250,10 +247,7 @@ const Devices = () => {
       condition: device.condition || 'good',
       status: device.status,
       notes: device.notes || '',
-      consumable_type: device.consumable_type || '',
-      consumable_model: device.consumable_model || '',
-      consumable_brand: device.consumable_brand || '',
-      consumable_notes: device.consumable_notes || ''
+      consumables: device.consumables || []
     });
     await fetchCompanyUsers(device.company_id);
     setModalOpen(true);
