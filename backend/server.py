@@ -4754,7 +4754,7 @@ async def get_company_device(device_id: str, user: dict = Depends(get_current_co
 
 @api_router.post("/company/devices/{device_id}/order-consumable")
 async def order_consumable(device_id: str, order_data: dict, user: dict = Depends(get_current_company_user)):
-    """Order consumables for a printer device"""
+    """Order consumables for a printer device - supports multiple items"""
     # Verify device belongs to company
     device = await db.devices.find_one({
         "id": device_id,
@@ -4790,6 +4790,26 @@ async def order_consumable(device_id: str, order_data: dict, user: dict = Depend
         {"_id": 0}
     ).sort("service_date", -1).limit(5).to_list(5)
     
+    # Process order items - support both legacy single item and new multiple items format
+    order_items = order_data.get("items", [])
+    
+    # Legacy support: if no items array but has consumable_type/quantity, create single item
+    if not order_items and (order_data.get("quantity") or order_data.get("consumable_type")):
+        order_items = [{
+            "consumable_id": "legacy",
+            "name": order_data.get("consumable_type") or device.get("consumable_type") or "Consumable",
+            "consumable_type": order_data.get("consumable_type") or device.get("consumable_type") or "Consumable",
+            "model_number": order_data.get("consumable_model") or device.get("consumable_model") or "",
+            "brand": device.get("consumable_brand"),
+            "quantity": order_data.get("quantity", 1)
+        }]
+    
+    if not order_items:
+        raise HTTPException(status_code=400, detail="No items specified in order")
+    
+    # Calculate total quantity
+    total_quantity = sum(item.get("quantity", 1) for item in order_items)
+    
     # Create the order
     order = ConsumableOrder(
         company_id=user["company_id"],
@@ -4797,9 +4817,12 @@ async def order_consumable(device_id: str, order_data: dict, user: dict = Depend
         requested_by=user["id"],
         requested_by_name=user.get("name", "Unknown"),
         requested_by_email=user.get("email", ""),
-        consumable_type=order_data.get("consumable_type") or device.get("consumable_type"),
-        consumable_model=order_data.get("consumable_model") or device.get("consumable_model"),
-        quantity=order_data.get("quantity", 1),
+        # Legacy fields for backward compatibility
+        consumable_type=order_items[0].get("consumable_type") if len(order_items) == 1 else "Multiple Items",
+        consumable_model=order_items[0].get("model_number") if len(order_items) == 1 else f"{len(order_items)} items",
+        quantity=total_quantity,
+        # New multi-item support
+        items=order_items,
         notes=order_data.get("notes")
     )
     
@@ -4816,21 +4839,38 @@ async def order_consumable(device_id: str, order_data: dict, user: dict = Depend
         except:
             return str(date_str)
     
-    # Build osTicket message
+    # Build osTicket message with multiple items support
     osticket_message = f"""
 <h2>CONSUMABLE ORDER REQUEST</h2>
 <p><strong>Order Number:</strong> {order.order_number}</p>
 <p><strong>Order Date:</strong> {format_date(order.created_at)}</p>
+<p><strong>Total Items:</strong> {len(order_items)} item(s), {total_quantity} unit(s)</p>
 
 <hr>
-<h3>CONSUMABLE REQUIRED</h3>
+<h3>CONSUMABLES ORDERED</h3>
 <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
-<tr style="background-color: #e0f2e9;"><td><strong>Consumable Type</strong></td><td><strong>{order.consumable_type or device.get('consumable_type') or 'Not Specified'}</strong></td></tr>
-<tr style="background-color: #e0f2e9;"><td><strong>Consumable Model/Part No.</strong></td><td><strong>{order.consumable_model or device.get('consumable_model') or 'Not Specified'}</strong></td></tr>
-<tr><td><strong>Consumable Brand</strong></td><td>{device.get('consumable_brand') or 'Not Specified'}</td></tr>
-<tr><td><strong>Quantity Required</strong></td><td>{order.quantity}</td></tr>
-<tr><td><strong>Special Notes</strong></td><td>{order.notes or 'None'}</td></tr>
+<tr style="background-color: #e0f2e9;">
+<th>Item</th><th>Type</th><th>Model/Part No.</th><th>Brand</th><th>Color</th><th>Qty</th>
+</tr>
+"""
+    
+    for idx, item in enumerate(order_items, 1):
+        color_display = item.get("color") or "-"
+        brand_display = item.get("brand") or "-"
+        osticket_message += f"""
+<tr>
+<td>{item.get('name', f'Item {idx}')}</td>
+<td>{item.get('consumable_type', 'N/A')}</td>
+<td><strong>{item.get('model_number', 'N/A')}</strong></td>
+<td>{brand_display}</td>
+<td>{color_display}</td>
+<td><strong>{item.get('quantity', 1)}</strong></td>
+</tr>
+"""
+    
+    osticket_message += f"""
 </table>
+<p><strong>Special Notes:</strong> {order.notes or 'None'}</p>
 
 <hr>
 <h3>PRINTER DETAILS</h3>
@@ -4838,11 +4878,10 @@ async def order_consumable(device_id: str, order_data: dict, user: dict = Depend
 <tr><td><strong>Serial Number</strong></td><td><strong>{device.get('serial_number', 'N/A')}</strong></td></tr>
 <tr><td><strong>Brand</strong></td><td>{device.get('brand', 'N/A')}</td></tr>
 <tr><td><strong>Model</strong></td><td>{device.get('model', 'N/A')}</td></tr>
-<tr><td><strong>Asset Tag</strong></td><td>{device.get('asset_tag', 'N/A')}</td></tr>
-<tr><td><strong>Location</strong></td><td>{device.get('location', 'N/A')}</td></tr>
+<tr><td><strong>Asset Tag</strong></td><td>{device.get('asset_tag') or 'N/A'}</td></tr>
+<tr><td><strong>Location</strong></td><td>{device.get('location') or 'N/A'}</td></tr>
 <tr><td><strong>Status</strong></td><td>{device.get('status', 'N/A')}</td></tr>
 <tr><td><strong>Condition</strong></td><td>{device.get('condition', 'N/A')}</td></tr>
-<tr><td><strong>Consumable Notes</strong></td><td>{device.get('consumable_notes', 'N/A')}</td></tr>
 </table>
 
 <hr>
