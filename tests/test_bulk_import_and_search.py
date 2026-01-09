@@ -30,18 +30,18 @@ def admin_token():
         "password": ADMIN_PASSWORD
     })
     assert response.status_code == 200, f"Admin login failed: {response.text}"
-    return response.json().get("token")
+    return response.json().get("access_token")
 
 
 @pytest.fixture(scope="module")
 def company_token():
     """Get company user authentication token"""
-    response = requests.post(f"{BASE_URL}/api/auth/login", json={
+    response = requests.post(f"{BASE_URL}/api/company/auth/login", json={
         "email": COMPANY_USER_EMAIL,
         "password": COMPANY_USER_PASSWORD
     })
     assert response.status_code == 200, f"Company login failed: {response.text}"
-    return response.json().get("token")
+    return response.json().get("access_token")
 
 
 @pytest.fixture(scope="module")
