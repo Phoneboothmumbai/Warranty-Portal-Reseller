@@ -2013,7 +2013,7 @@ async def bulk_import_devices(data: dict, admin: dict = Depends(get_current_admi
     
     # Get lookups
     companies = await db.companies.find({"is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
-    company_by_code = {c.get("company_code", "").upper(): c["id"] for c in companies if c.get("company_code")}
+    company_by_code = {c.get("code", "").upper(): c["id"] for c in companies if c.get("code")}
     company_by_name = {c["name"].lower(): c["id"] for c in companies}
     
     success_count = 0
