@@ -6258,6 +6258,53 @@ app.add_middleware(
 async def startup_event():
     # Ensure uploads directory exists
     UPLOAD_DIR.mkdir(exist_ok=True)
+    
+    # Seed default supply categories and products if none exist
+    existing_categories = await db.supply_categories.count_documents({})
+    if existing_categories == 0:
+        # Create default categories
+        stationery_cat = SupplyCategory(
+            name="Stationery",
+            icon="📁",
+            description="Paper, pens, files, and other office stationery",
+            sort_order=1
+        )
+        consumables_cat = SupplyCategory(
+            name="Printer Consumables",
+            icon="🖨",
+            description="Ink, toner, drums, and labels",
+            sort_order=2
+        )
+        
+        await db.supply_categories.insert_many([
+            stationery_cat.model_dump(),
+            consumables_cat.model_dump()
+        ])
+        
+        # Create sample products
+        sample_products = [
+            # Stationery
+            SupplyProduct(category_id=stationery_cat.id, name="A4 Paper (500 sheets)", unit="ream"),
+            SupplyProduct(category_id=stationery_cat.id, name="Legal Size Paper (500 sheets)", unit="ream"),
+            SupplyProduct(category_id=stationery_cat.id, name="Ball Point Pen - Blue", unit="pack of 10"),
+            SupplyProduct(category_id=stationery_cat.id, name="Ball Point Pen - Black", unit="pack of 10"),
+            SupplyProduct(category_id=stationery_cat.id, name="File Folder", unit="pack of 10"),
+            SupplyProduct(category_id=stationery_cat.id, name="Sticky Notes (3x3)", unit="pack"),
+            SupplyProduct(category_id=stationery_cat.id, name="Envelopes - A4", unit="pack of 50"),
+            SupplyProduct(category_id=stationery_cat.id, name="Stapler Pins", unit="box"),
+            # Consumables
+            SupplyProduct(category_id=consumables_cat.id, name="Printer Ink - Black", unit="cartridge"),
+            SupplyProduct(category_id=consumables_cat.id, name="Printer Ink - Color", unit="cartridge"),
+            SupplyProduct(category_id=consumables_cat.id, name="Toner Cartridge - Black", unit="piece"),
+            SupplyProduct(category_id=consumables_cat.id, name="Toner Cartridge - Cyan", unit="piece"),
+            SupplyProduct(category_id=consumables_cat.id, name="Toner Cartridge - Magenta", unit="piece"),
+            SupplyProduct(category_id=consumables_cat.id, name="Toner Cartridge - Yellow", unit="piece"),
+            SupplyProduct(category_id=consumables_cat.id, name="Drum Unit", unit="piece"),
+            SupplyProduct(category_id=consumables_cat.id, name="Printer Labels (A4 Sheet)", unit="pack of 100"),
+        ]
+        
+        await db.supply_products.insert_many([p.model_dump() for p in sample_products])
+        logger.info("Seeded default supply categories and products")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
