@@ -613,8 +613,6 @@ class BulkQRRequest(BaseModel):
     device_ids: Optional[List[str]] = None  # Specific device IDs
     company_id: Optional[str] = None  # All devices from a company
     site_id: Optional[str] = None  # All devices from a site
-    qr_size: int = 120  # QR code size in pixels (for PDF)
-    columns: int = 3  # Number of columns per page (2, 3, or 4)
 
 
 @api_router.post("/devices/bulk-qr-pdf")
@@ -624,14 +622,14 @@ async def generate_bulk_qr_pdf(
 ):
     """
     Generate a printable A4 PDF with multiple QR codes.
-    Each QR code has Serial Number and Asset Tag printed below it.
-    Supports filtering by device_ids, company_id, or site_id.
+    Each QR code is 1.5 inch x 1.5 inch with Serial Number and Asset Tag.
+    A4 paper fits 4 columns x 5 rows = 20 QR codes per page.
     """
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
+    from reportlab.lib.units import inch
     from reportlab.pdfgen import canvas
     from reportlab.lib.utils import ImageReader
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image
     
     # Build query based on filters
     query = {"is_deleted": {"$ne": True}}
@@ -647,7 +645,7 @@ async def generate_bulk_qr_pdf(
     devices = await db.devices.find(
         query,
         {"_id": 0, "id": 1, "serial_number": 1, "asset_tag": 1, "brand": 1, "model": 1}
-    ).sort("serial_number", 1).to_list(500)  # Limit to 500 devices
+    ).sort("serial_number", 1).to_list(500)
     
     if not devices:
         raise HTTPException(status_code=404, detail="No devices found matching criteria")
@@ -661,38 +659,35 @@ async def generate_bulk_qr_pdf(
         else:
             frontend_url = "https://your-portal-url.com"
     
-    # PDF settings
-    page_width, page_height = A4  # 595 x 842 points
-    margin = 15 * mm
-    columns = min(max(request.columns, 2), 4)  # 2-4 columns
+    # PDF settings - Fixed 1.5 inch QR codes
+    page_width, page_height = A4  # 595 x 842 points (8.27 x 11.69 inches)
     
-    # Calculate cell dimensions
-    usable_width = page_width - (2 * margin)
-    cell_width = usable_width / columns
-    cell_height = cell_width * 1.3  # Extra space for text below QR
+    # QR code size: 1.5 inch x 1.5 inch
+    qr_size = 1.5 * inch  # 108 points
+    label_height = 0.35 * inch  # Space for text below QR
+    cell_padding = 0.15 * inch  # Padding between cells
     
-    rows_per_page = int((page_height - 2 * margin) / cell_height)
-    qr_size = int(cell_width * 0.75)  # QR takes 75% of cell width
+    cell_width = qr_size + cell_padding
+    cell_height = qr_size + label_height + cell_padding
+    
+    # Calculate grid: how many fit on A4
+    margin_x = (page_width - (4 * cell_width)) / 2  # Center 4 columns
+    margin_y = 0.5 * inch  # Top/bottom margin
+    
+    columns = 4  # 4 columns of 1.5 inch QR codes fit on A4 width
+    rows_per_page = 5  # 5 rows fit on A4 height
     
     # Create PDF
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
-    
-    # Try to load a font for labels
-    try:
-        from reportlab.pdfbase import pdfmetrics
-        from reportlab.pdfbase.ttfonts import TTFont
-        # Use default Helvetica
-    except:
-        pass
     
     current_row = 0
     current_col = 0
     
     for device in devices:
         # Calculate position
-        x = margin + (current_col * cell_width)
-        y = page_height - margin - ((current_row + 1) * cell_height)
+        x = margin_x + (current_col * cell_width)
+        y = page_height - margin_y - ((current_row + 1) * cell_height)
         
         # Generate QR code for this device
         device_url = f"{frontend_url}/device/{device['serial_number']}"
@@ -706,7 +701,7 @@ async def generate_bulk_qr_pdf(
         qr.add_data(device_url)
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color="black", back_color="white")
-        qr_img = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
+        qr_img = qr_img.resize((300, 300), Image.Resampling.LANCZOS)  # High res for print
         
         # Convert PIL image to ReportLab ImageReader
         qr_buffer = BytesIO()
@@ -714,39 +709,36 @@ async def generate_bulk_qr_pdf(
         qr_buffer.seek(0)
         qr_reader = ImageReader(qr_buffer)
         
-        # Draw QR code (centered in cell)
+        # Draw QR code (1.5 inch x 1.5 inch)
         qr_x = x + (cell_width - qr_size) / 2
-        qr_y = y + cell_height - qr_size - 5
+        qr_y = y + label_height
         c.drawImage(qr_reader, qr_x, qr_y, width=qr_size, height=qr_size)
         
-        # Draw Serial Number below QR
+        # Draw labels below QR
         serial = device.get('serial_number', 'N/A')
         asset_tag = device.get('asset_tag', '')
-        
         text_x = x + cell_width / 2
         
-        # Serial Number (bold, larger)
-        c.setFont("Helvetica-Bold", 8)
-        c.drawCentredString(text_x, y + cell_height - qr_size - 18, f"S/N: {serial}")
+        # Serial Number (bold)
+        c.setFont("Helvetica-Bold", 7)
+        c.setFillColorRGB(0, 0, 0)
+        serial_display = serial if len(serial) <= 20 else serial[:17] + "..."
+        c.drawCentredString(text_x, y + label_height - 12, f"S/N: {serial_display}")
         
-        # Asset Tag (smaller, if exists)
+        # Asset Tag (if exists)
         if asset_tag:
-            c.setFont("Helvetica", 7)
-            c.drawCentredString(text_x, y + cell_height - qr_size - 28, f"Tag: {asset_tag}")
-        
-        # Device info (even smaller)
-        device_info = f"{device.get('brand', '')} {device.get('model', '')}"
-        if device_info.strip():
             c.setFont("Helvetica", 6)
-            # Truncate if too long
-            if len(device_info) > 25:
-                device_info = device_info[:22] + "..."
-            c.drawCentredString(text_x, y + cell_height - qr_size - 38, device_info)
+            c.setFillColorRGB(0.3, 0.3, 0.3)
+            tag_display = asset_tag if len(asset_tag) <= 20 else asset_tag[:17] + "..."
+            c.drawCentredString(text_x, y + label_height - 22, f"Tag: {tag_display}")
         
-        # Draw light border around cell (optional, helps with cutting)
+        # Draw cutting guide border
         c.setStrokeColorRGB(0.85, 0.85, 0.85)
         c.setLineWidth(0.5)
         c.rect(x + 2, y + 2, cell_width - 4, cell_height - 4)
+        
+        # Reset fill color
+        c.setFillColorRGB(0, 0, 0)
         
         # Move to next cell
         current_col += 1
@@ -759,10 +751,10 @@ async def generate_bulk_qr_pdf(
                 c.showPage()
                 current_row = 0
     
-    # Add page numbers and generation info
-    c.setFont("Helvetica", 8)
+    # Footer with generation info
+    c.setFont("Helvetica", 7)
     c.setFillColorRGB(0.5, 0.5, 0.5)
-    c.drawString(margin, 15, f"Generated: {get_ist_now().strftime('%Y-%m-%d %H:%M')} | Total: {len(devices)} QR codes")
+    c.drawString(margin_x, 12, f"Generated: {get_ist_now().strftime('%Y-%m-%d %H:%M')} | {len(devices)} QR codes | Size: 1.5\" x 1.5\"")
     
     c.save()
     buffer.seek(0)
