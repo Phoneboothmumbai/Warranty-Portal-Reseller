@@ -138,32 +138,12 @@ const CompanyTicketDetails = () => {
             <p className="text-slate-500 mt-2 flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Created {formatDate(ticket.created_at)}
-              {ticket.last_synced_at && (
-                <span className="text-xs text-slate-400 ml-2">
-                  • Last synced: {formatDate(ticket.last_synced_at)}
-                </span>
-              )}
             </p>
           </div>
           
-          <div className="flex items-center gap-3">
-            {ticket.osticket_id && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSyncFromOsTicket}
-                disabled={syncing}
-                className="border-purple-200 text-purple-700 hover:bg-purple-50"
-                data-testid="sync-osticket-btn"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                {syncing ? 'Syncing...' : 'Refresh Ticket'}
-              </Button>
-            )}
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border ${getStatusColor(ticket.status)}`}>
-              {getStatusIcon(ticket.status)}
-              {ticket.status?.replace('_', ' ')}
-            </div>
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border ${getStatusColor(ticket.status)}`}>
+            {getStatusIcon(ticket.status)}
+            {ticket.status?.replace('_', ' ')}
           </div>
         </div>
       </div>
