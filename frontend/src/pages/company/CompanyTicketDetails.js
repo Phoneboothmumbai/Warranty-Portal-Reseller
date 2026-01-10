@@ -45,7 +45,7 @@ const CompanyTicketDetails = () => {
     setSubmitting(true);
     try {
       await axios.post(`${API}/company/tickets/${ticketId}/comments`, 
-        { content: comment },
+        { comment: comment, attachments: [] },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success('Comment added');
