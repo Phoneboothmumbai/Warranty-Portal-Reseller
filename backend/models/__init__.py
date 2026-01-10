@@ -63,3 +63,9 @@ from models.supplies import (
     SupplyProduct, SupplyProductCreate, SupplyProductUpdate,
     SupplyOrderItem, SupplyOrderLocation, SupplyOrder
 )
+
+# Engineer models
+from models.engineer import (
+    Engineer, EngineerCreate, EngineerUpdate, EngineerLogin,
+    FieldVisit, ServiceReportSubmit
+)
