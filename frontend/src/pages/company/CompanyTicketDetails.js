@@ -190,7 +190,7 @@ const CompanyTicketDetails = () => {
                 data-testid="sync-osticket-btn"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                {syncing ? 'Syncing...' : 'Refresh from osTicket'}
+                {syncing ? 'Syncing...' : 'Refresh Ticket'}
               </Button>
             )}
             <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border ${getStatusColor(ticket.status)}`}>
