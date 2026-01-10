@@ -64,6 +64,9 @@ const Devices = () => {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [editingDevice, setEditingDevice] = useState(null);
   
+  // Checkbox selection for bulk QR
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState(new Set());
+  
   // Master data
   const [deviceTypes, setDeviceTypes] = useState([]);
   const [brands, setBrands] = useState([]);
