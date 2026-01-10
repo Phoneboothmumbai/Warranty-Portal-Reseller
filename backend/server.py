@@ -4126,6 +4126,452 @@ async def get_dashboard_alerts(admin: dict = Depends(get_current_admin)):
     
     return alerts
 
+# ==================== ENGINEER PORTAL ENDPOINTS ====================
+
+from models.engineer import Engineer, EngineerCreate, EngineerUpdate, EngineerLogin, FieldVisit, ServiceReportSubmit
+from services.auth import get_current_engineer
+
+# --- Engineer Auth ---
+
+@api_router.post("/engineer/auth/login")
+async def engineer_login(login: EngineerLogin):
+    """Engineer login"""
+    engineer = await db.engineers.find_one(
+        {"email": login.email, "is_active": True, "is_deleted": {"$ne": True}},
+        {"_id": 0}
+    )
+    
+    if not engineer or not verify_password(login.password, engineer["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    token = create_access_token(data={"sub": engineer["id"], "type": "engineer"})
+    
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "engineer": {
+            "id": engineer["id"],
+            "name": engineer["name"],
+            "email": engineer["email"],
+            "phone": engineer.get("phone")
+        }
+    }
+
+
+@api_router.get("/engineer/me")
+async def get_engineer_profile(engineer: dict = Depends(get_current_engineer)):
+    """Get current engineer profile"""
+    return engineer
+
+
+# --- Engineer Assigned Tickets ---
+
+@api_router.get("/engineer/my-visits")
+async def get_engineer_visits(
+    status: Optional[str] = None,
+    engineer: dict = Depends(get_current_engineer)
+):
+    """Get all field visits assigned to this engineer"""
+    query = {
+        "engineer_id": engineer["id"],
+        "status": {"$ne": "cancelled"}
+    }
+    
+    if status:
+        query["status"] = status
+    
+    visits = await db.field_visits.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Enrich with device and company info
+    for visit in visits:
+        device = await db.devices.find_one(
+            {"id": visit["device_id"]},
+            {"_id": 0, "brand": 1, "model": 1, "serial_number": 1, "location": 1}
+        )
+        company = await db.companies.find_one(
+            {"id": visit["company_id"]},
+            {"_id": 0, "name": 1, "address": 1, "contact_phone": 1}
+        )
+        ticket = await db.service_tickets.find_one(
+            {"id": visit["ticket_id"]},
+            {"_id": 0, "ticket_number": 1, "subject": 1, "priority": 1, "issue_category": 1}
+        )
+        
+        visit["device"] = device
+        visit["company"] = company
+        visit["ticket"] = ticket
+    
+    return visits
+
+
+@api_router.get("/engineer/visits/{visit_id}")
+async def get_visit_details(
+    visit_id: str,
+    engineer: dict = Depends(get_current_engineer)
+):
+    """Get detailed visit information"""
+    visit = await db.field_visits.find_one(
+        {"id": visit_id, "engineer_id": engineer["id"]},
+        {"_id": 0}
+    )
+    
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    
+    # Get device details
+    device = await db.devices.find_one(
+        {"id": visit["device_id"]},
+        {"_id": 0}
+    )
+    
+    # Get company details
+    company = await db.companies.find_one(
+        {"id": visit["company_id"]},
+        {"_id": 0, "name": 1, "address": 1, "contact_name": 1, "contact_phone": 1, "contact_email": 1}
+    )
+    
+    # Get ticket details
+    ticket = await db.service_tickets.find_one(
+        {"id": visit["ticket_id"]},
+        {"_id": 0}
+    )
+    
+    # Get service history for this device
+    service_history = await db.service_history.find(
+        {"device_id": visit["device_id"]},
+        {"_id": 0}
+    ).sort("service_date", -1).limit(5).to_list(5)
+    
+    return {
+        "visit": visit,
+        "device": device,
+        "company": company,
+        "ticket": ticket,
+        "service_history": service_history
+    }
+
+
+@api_router.post("/engineer/visits/{visit_id}/check-in")
+async def engineer_check_in(
+    visit_id: str,
+    location: Optional[str] = None,
+    notes: Optional[str] = None,
+    engineer: dict = Depends(get_current_engineer)
+):
+    """Engineer checks in at site"""
+    visit = await db.field_visits.find_one(
+        {"id": visit_id, "engineer_id": engineer["id"]},
+        {"_id": 0}
+    )
+    
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    
+    if visit["status"] != "assigned":
+        raise HTTPException(status_code=400, detail="Can only check-in to assigned visits")
+    
+    await db.field_visits.update_one(
+        {"id": visit_id},
+        {"$set": {
+            "check_in_time": get_ist_isoformat(),
+            "check_in_location": location,
+            "check_in_notes": notes,
+            "status": "in_progress"
+        }}
+    )
+    
+    # Update ticket status
+    await db.service_tickets.update_one(
+        {"id": visit["ticket_id"]},
+        {"$set": {"status": "in_progress", "updated_at": get_ist_isoformat()}}
+    )
+    
+    return {"success": True, "message": "Checked in successfully", "check_in_time": get_ist_isoformat()}
+
+
+@api_router.post("/engineer/visits/{visit_id}/service-report")
+async def submit_service_report(
+    visit_id: str,
+    report: ServiceReportSubmit,
+    engineer: dict = Depends(get_current_engineer)
+):
+    """Submit service report for a visit"""
+    visit = await db.field_visits.find_one(
+        {"id": visit_id, "engineer_id": engineer["id"]},
+        {"_id": 0}
+    )
+    
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    
+    if visit["status"] != "in_progress":
+        raise HTTPException(status_code=400, detail="Must check-in before submitting report")
+    
+    await db.field_visits.update_one(
+        {"id": visit_id},
+        {"$set": {
+            "problem_found": report.problem_found,
+            "action_taken": report.action_taken,
+            "parts_used": report.parts_used or [],
+            "check_out_notes": report.notes
+        }}
+    )
+    
+    return {"success": True, "message": "Service report saved"}
+
+
+@api_router.post("/engineer/visits/{visit_id}/upload-photo")
+async def upload_visit_photo(
+    visit_id: str,
+    file: UploadFile = File(...),
+    engineer: dict = Depends(get_current_engineer)
+):
+    """Upload a photo for the visit"""
+    visit = await db.field_visits.find_one(
+        {"id": visit_id, "engineer_id": engineer["id"]},
+        {"_id": 0}
+    )
+    
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    
+    # Save file
+    file_ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    filename = f"visit_{visit_id}_{uuid.uuid4().hex[:8]}.{file_ext}"
+    file_path = UPLOAD_DIR / filename
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Add to visit photos
+    await db.field_visits.update_one(
+        {"id": visit_id},
+        {"$push": {"photos": filename}}
+    )
+    
+    return {"success": True, "filename": filename, "url": f"/uploads/{filename}"}
+
+
+@api_router.post("/engineer/visits/{visit_id}/check-out")
+async def engineer_check_out(
+    visit_id: str,
+    customer_name: Optional[str] = None,
+    engineer: dict = Depends(get_current_engineer)
+):
+    """Engineer checks out and completes the visit"""
+    visit = await db.field_visits.find_one(
+        {"id": visit_id, "engineer_id": engineer["id"]},
+        {"_id": 0}
+    )
+    
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    
+    if visit["status"] != "in_progress":
+        raise HTTPException(status_code=400, detail="Must be in progress to check out")
+    
+    if not visit.get("problem_found") or not visit.get("action_taken"):
+        raise HTTPException(status_code=400, detail="Please submit service report before checking out")
+    
+    check_out_time = get_ist_isoformat()
+    
+    await db.field_visits.update_one(
+        {"id": visit_id},
+        {"$set": {
+            "check_out_time": check_out_time,
+            "customer_name": customer_name,
+            "status": "completed"
+        }}
+    )
+    
+    # Update ticket status to resolved
+    await db.service_tickets.update_one(
+        {"id": visit["ticket_id"]},
+        {"$set": {
+            "status": "resolved",
+            "resolved_at": check_out_time,
+            "updated_at": check_out_time
+        }}
+    )
+    
+    # Create service history record
+    device = await db.devices.find_one({"id": visit["device_id"]}, {"_id": 0, "company_id": 1})
+    
+    service_record = {
+        "id": str(uuid.uuid4()),
+        "device_id": visit["device_id"],
+        "company_id": visit["company_id"],
+        "service_date": check_out_time.split("T")[0],
+        "service_type": "Field Visit",
+        "problem_reported": visit.get("problem_found"),
+        "action_taken": visit.get("action_taken"),
+        "parts_used": visit.get("parts_used", []),
+        "technician_name": engineer["name"],
+        "ticket_id": visit["ticket_id"],
+        "notes": f"Field visit by {engineer['name']}. Check-in: {visit.get('check_in_time')}, Check-out: {check_out_time}",
+        "created_by": engineer["id"],
+        "created_by_name": engineer["name"],
+        "created_at": get_ist_isoformat()
+    }
+    
+    await db.service_history.insert_one(service_record)
+    
+    return {
+        "success": True,
+        "message": "Visit completed successfully",
+        "check_out_time": check_out_time,
+        "service_record_id": service_record["id"]
+    }
+
+
+# --- Admin: Engineer Management ---
+
+@api_router.get("/admin/engineers")
+async def list_engineers(admin: dict = Depends(get_current_admin)):
+    """List all engineers"""
+    engineers = await db.engineers.find(
+        {"is_deleted": {"$ne": True}},
+        {"_id": 0, "password_hash": 0}
+    ).sort("name", 1).to_list(100)
+    return engineers
+
+
+@api_router.post("/admin/engineers")
+async def create_engineer(engineer_data: EngineerCreate, admin: dict = Depends(get_current_admin)):
+    """Create a new engineer"""
+    # Check if email exists
+    existing = await db.engineers.find_one({"email": engineer_data.email, "is_deleted": {"$ne": True}})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    engineer = Engineer(
+        name=engineer_data.name,
+        email=engineer_data.email,
+        phone=engineer_data.phone,
+        password_hash=get_password_hash(engineer_data.password)
+    )
+    
+    await db.engineers.insert_one(engineer.model_dump())
+    
+    return {
+        "id": engineer.id,
+        "name": engineer.name,
+        "email": engineer.email,
+        "phone": engineer.phone
+    }
+
+
+@api_router.put("/admin/engineers/{engineer_id}")
+async def update_engineer(
+    engineer_id: str,
+    update_data: EngineerUpdate,
+    admin: dict = Depends(get_current_admin)
+):
+    """Update engineer"""
+    engineer = await db.engineers.find_one({"id": engineer_id, "is_deleted": {"$ne": True}})
+    if not engineer:
+        raise HTTPException(status_code=404, detail="Engineer not found")
+    
+    update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    
+    if update_dict:
+        await db.engineers.update_one({"id": engineer_id}, {"$set": update_dict})
+    
+    return {"success": True}
+
+
+@api_router.delete("/admin/engineers/{engineer_id}")
+async def delete_engineer(engineer_id: str, admin: dict = Depends(get_current_admin)):
+    """Delete engineer"""
+    await db.engineers.update_one(
+        {"id": engineer_id},
+        {"$set": {"is_deleted": True}}
+    )
+    return {"success": True}
+
+
+# --- Admin: Assign Ticket to Engineer ---
+
+@api_router.post("/admin/tickets/{ticket_id}/assign")
+async def assign_ticket_to_engineer(
+    ticket_id: str,
+    engineer_id: str,
+    admin: dict = Depends(get_current_admin)
+):
+    """Assign a service ticket to an engineer for field visit"""
+    # Get ticket
+    ticket = await db.service_tickets.find_one(
+        {"id": ticket_id, "is_deleted": {"$ne": True}},
+        {"_id": 0}
+    )
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    # Get engineer
+    engineer = await db.engineers.find_one(
+        {"id": engineer_id, "is_active": True, "is_deleted": {"$ne": True}},
+        {"_id": 0, "name": 1}
+    )
+    if not engineer:
+        raise HTTPException(status_code=404, detail="Engineer not found")
+    
+    # Create field visit
+    visit = FieldVisit(
+        ticket_id=ticket_id,
+        engineer_id=engineer_id,
+        engineer_name=engineer["name"],
+        device_id=ticket["device_id"],
+        company_id=ticket["company_id"],
+        status="assigned"
+    )
+    
+    await db.field_visits.insert_one(visit.model_dump())
+    
+    # Update ticket
+    await db.service_tickets.update_one(
+        {"id": ticket_id},
+        {"$set": {
+            "assigned_to": engineer_id,
+            "status": "assigned",
+            "updated_at": get_ist_isoformat()
+        }}
+    )
+    
+    return {
+        "success": True,
+        "visit_id": visit.id,
+        "message": f"Ticket assigned to {engineer['name']}"
+    }
+
+
+@api_router.get("/admin/field-visits")
+async def list_field_visits(
+    status: Optional[str] = None,
+    engineer_id: Optional[str] = None,
+    admin: dict = Depends(get_current_admin)
+):
+    """List all field visits"""
+    query = {}
+    if status:
+        query["status"] = status
+    if engineer_id:
+        query["engineer_id"] = engineer_id
+    
+    visits = await db.field_visits.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    
+    # Enrich
+    for visit in visits:
+        device = await db.devices.find_one({"id": visit["device_id"]}, {"_id": 0, "brand": 1, "model": 1, "serial_number": 1})
+        company = await db.companies.find_one({"id": visit["company_id"]}, {"_id": 0, "name": 1})
+        ticket = await db.service_tickets.find_one({"id": visit["ticket_id"]}, {"_id": 0, "ticket_number": 1, "subject": 1})
+        
+        visit["device"] = device
+        visit["company"] = company
+        visit["ticket"] = ticket
+    
+    return visits
+
+
 # ==================== COMPANY PORTAL ENDPOINTS ====================
 
 # --- Company Auth ---
