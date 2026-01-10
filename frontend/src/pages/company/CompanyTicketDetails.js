@@ -58,45 +58,6 @@ const CompanyTicketDetails = () => {
     }
   };
 
-  const handleSyncFromOsTicket = async () => {
-    if (!ticket?.osticket_id) {
-      toast.info('This ticket is not linked to osTicket');
-      return;
-    }
-
-    setSyncing(true);
-    try {
-      const response = await axios.post(`${API}/company/tickets/${ticketId}/sync`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.data.changes && response.data.changes.length > 0) {
-        toast.success(`Synced: ${response.data.changes.join(', ')}`);
-      } else {
-        toast.info('Already up to date');
-      }
-      
-      // Update local ticket data
-      if (response.data.ticket) {
-        setTicket(response.data.ticket);
-      } else {
-        fetchTicket();
-      }
-    } catch (error) {
-      const errorMsg = error.response?.data?.detail || 'Failed to sync ticket';
-      // Show a more user-friendly message for common errors
-      if (errorMsg.includes('does not support') || errorMsg.includes('plugin')) {
-        toast.error('Sync not available. osTicket REST API plugin required.');
-      } else if (errorMsg.includes('IP') || errorMsg.includes('denied')) {
-        toast.error('Sync unavailable from this location.');
-      } else {
-        toast.error(errorMsg);
-      }
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   const getStatusIcon = (status) => {
     switch (status) {
       case 'open': return <AlertCircle className="h-5 w-5" />;
