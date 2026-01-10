@@ -656,6 +656,18 @@ const Devices = () => {
             <table className="w-full table-modern">
               <thead>
                 <tr>
+                  <th className="w-12">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={el => {
+                        if (el) el.indeterminate = someSelected;
+                      }}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 rounded border-slate-300 text-[#0F62FE] focus:ring-[#0F62FE]"
+                      data-testid="select-all-checkbox"
+                    />
+                  </th>
                   <th>Device</th>
                   <th>Serial / Asset</th>
                   <th>Company</th>
@@ -669,8 +681,22 @@ const Devices = () => {
               <tbody>
                 {filteredDevices.map((device) => {
                   const daysLeft = getWarrantyDaysLeft(device.warranty_end_date);
+                  const isSelected = selectedDeviceIds.has(device.id);
                   return (
-                    <tr key={device.id} data-testid={`device-row-${device.id}`}>
+                    <tr 
+                      key={device.id} 
+                      data-testid={`device-row-${device.id}`}
+                      className={isSelected ? 'bg-blue-50/50' : ''}
+                    >
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleSelectDevice(device.id)}
+                          className="w-4 h-4 rounded border-slate-300 text-[#0F62FE] focus:ring-[#0F62FE]"
+                          data-testid={`select-device-${device.id}`}
+                        />
+                      </td>
                       <td>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
