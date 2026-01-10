@@ -497,12 +497,16 @@ class QuickServiceRequest(BaseModel):
 @api_router.get("/device/{identifier}/qr")
 async def generate_device_qr_code(
     identifier: str,
-    size: int = Query(default=200, ge=100, le=500)
+    size: int = Query(default=200, ge=100, le=500),
+    include_label: bool = Query(default=True, description="Include serial number and asset tag below QR")
 ):
     """
     Generate QR code for a device (by serial number or asset tag).
     The QR code links to the public device info page.
+    When include_label=True, adds Serial Number and Asset Tag below the QR code.
     """
+    from PIL import Image, ImageDraw, ImageFont
+    
     # Find device by serial number or asset tag
     device = await db.devices.find_one(
         {"$and": [
@@ -512,7 +516,7 @@ async def generate_device_qr_code(
                 {"asset_tag": {"$regex": f"^{identifier}$", "$options": "i"}}
             ]}
         ]},
-        {"_id": 0, "serial_number": 1}
+        {"_id": 0, "serial_number": 1, "asset_tag": 1, "brand": 1, "model": 1}
     )
     
     if not device:
@@ -541,12 +545,49 @@ async def generate_device_qr_code(
     qr.add_data(device_url)
     qr.make(fit=True)
     
-    # Create image
-    img = qr.make_image(fill_color="black", back_color="white")
+    # Create QR image
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
     
-    # Resize if needed
-    if size != 200:
-        img = img.resize((size, size))
+    # Resize QR to requested size
+    qr_img = qr_img.resize((size, size), Image.Resampling.LANCZOS)
+    
+    if include_label:
+        # Create a larger image with space for text below
+        label_height = 50 if device.get('asset_tag') else 35
+        final_img = Image.new('RGB', (size, size + label_height), 'white')
+        final_img.paste(qr_img, (0, 0))
+        
+        # Add text labels
+        draw = ImageDraw.Draw(final_img)
+        
+        # Try to use a reasonable font size based on image size
+        font_size = max(12, size // 15)
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
+            font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size - 2)
+        except:
+            font = ImageFont.load_default()
+            font_small = font
+        
+        serial_text = f"S/N: {device.get('serial_number', 'N/A')}"
+        
+        # Center the serial number text
+        bbox = draw.textbbox((0, 0), serial_text, font=font)
+        text_width = bbox[2] - bbox[0]
+        x = (size - text_width) // 2
+        draw.text((x, size + 5), serial_text, fill='black', font=font)
+        
+        # Add asset tag if exists
+        if device.get('asset_tag'):
+            tag_text = f"Tag: {device['asset_tag']}"
+            bbox = draw.textbbox((0, 0), tag_text, font=font_small)
+            text_width = bbox[2] - bbox[0]
+            x = (size - text_width) // 2
+            draw.text((x, size + 5 + font_size + 5), tag_text, fill='gray', font=font_small)
+        
+        img = final_img
+    else:
+        img = qr_img
     
     # Convert to bytes
     buffer = BytesIO()
