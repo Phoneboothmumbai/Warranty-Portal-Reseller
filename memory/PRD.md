@@ -234,3 +234,82 @@ The monolithic `server.py` has been refactored into a modular architecture:
 - **Easier testing**: Individual modules can be unit tested
 - **Clearer separation of concerns**: Config, DB, models, services all isolated
 
+## osTicket Manual Sync Feature (COMPLETED - Jan 10, 2026)
+Manual "Refresh from osTicket" button to sync ticket status and replies without requiring webhooks.
+
+### Features Implemented
+1. **Backend Sync Endpoint**
+   - Endpoint: `POST /api/company/tickets/{ticket_id}/sync`
+   - Requires company user authentication
+   - Validates ticket has osticket_id before syncing
+   - Fetches ticket details from osTicket API
+   - Maps osTicket status to portal status (open, in_progress, resolved, closed)
+   - Imports new messages/replies as comments with `osticket_staff` user_type
+   - Returns list of changes made
+
+2. **Frontend Sync Button**
+   - Purple "Refresh from osTicket" button on CompanyTicketDetails page
+   - Only visible for tickets with osticket_id
+   - Shows spinner during sync
+   - Displays toast with changes or "Already up to date"
+   - Comments from osTicket show purple badge "osTicket" and "(synced)" indicator
+
+### Test Results
+- 12/13 backend tests passed (1 skipped)
+- 100% frontend UI tests passed
+- osTicket API is IP-restricted (65.20.78.143) - 503 errors expected in preview environment
+
+## Individual QR Download Bug Fix (COMPLETED - Jan 10, 2026)
+Fixed recurring bug where clicking "Download QR Code" for single device downloaded all devices.
+
+### Issue
+- User reported that individual QR download was downloading bulk QR PDF with all devices
+- Root cause: Simple link approach didn't properly handle blob response
+
+### Fix Applied
+- Changed `handleDownloadQR` function in `Devices.js` to use axios blob approach
+- Same pattern as bulk QR download - fetch blob, create object URL, trigger download
+- PDF size verified: ~8.8KB for single device vs ~23KB for 3 devices
+
+### Test Results
+- Individual QR download returns correct PDF (8,835 bytes)
+- PDF filename contains serial number
+- Frontend dropdown option works correctly
+- Success toast notification shows
+
+## Engineer Field Visit Portal (In Progress)
+Foundation built for service engineers to manage assigned tickets and field visits.
+
+### Completed
+- Backend models for Engineers and Field Visits
+- Engineer authentication (login/register)
+- Mobile-friendly Engineer Dashboard (list assigned tickets)
+- Public route `/engineer` for login
+
+### Pending
+- Check-in/Check-out forms for site visits
+- Action logging (work performed)
+- Parts used tracking
+- Photo upload for completed work
+- Admin ticket assignment UI
+
+## Upcoming Tasks (Priority Order)
+1. **P1: Complete Engineer Field Visit Workflow**
+   - Check-in/out forms, action logs, parts tracking, photo uploads
+   - Admin UI to assign tickets to engineers
+
+2. **P1: Admin & User Role Management**
+   - Role-based access control (Super Admin, Admin, Staff, Service Engineer)
+   - Permission system for different user types
+
+3. **P2: Email Notifications**
+   - Ticket status updates
+   - Warranty expiry alerts
+   - Order confirmations
+
+## Future/Backlog
+- WhatsApp Integration (user deferred)
+- PDF Export for Service History
+- Warranty Expiry Dashboard (calendar view)
+- Backend route refactoring (move routes from server.py to routes/ directory)
+- Fix eslint/lint warnings
