@@ -504,6 +504,19 @@ const Devices = () => {
     );
   }
 
+  // Get filtered devices for display
+  const filteredDevices = devices.filter(d => 
+    (!searchQuery || 
+      d.serial_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.model?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.asset_tag?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  );
+
+  const allSelected = filteredDevices.length > 0 && selectedDeviceIds.size === filteredDevices.length;
+  const someSelected = selectedDeviceIds.size > 0 && selectedDeviceIds.size < filteredDevices.length;
+
   return (
     <div className="space-y-6" data-testid="devices-page">
       {/* Header */}
@@ -512,7 +525,20 @@ const Devices = () => {
           <h1 className="text-2xl font-semibold text-slate-900">Devices</h1>
           <p className="text-slate-500 mt-1">Manage devices and assets</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {selectedDeviceIds.size > 0 && (
+            <div className="flex items-center gap-2 mr-2 px-3 py-1.5 bg-blue-50 rounded-lg">
+              <span className="text-sm font-medium text-blue-700">
+                {selectedDeviceIds.size} selected
+              </span>
+              <button 
+                onClick={clearSelection}
+                className="text-blue-500 hover:text-blue-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
           <BulkImport
             entityName="Devices"
             columns={bulkImportColumns}
@@ -521,13 +547,19 @@ const Devices = () => {
           />
           <Button 
             onClick={handleBulkQRDownload}
-            variant="outline"
-            className="border-slate-300 hover:bg-slate-50"
+            variant={selectedDeviceIds.size > 0 ? "default" : "outline"}
+            className={selectedDeviceIds.size > 0 
+              ? "bg-[#0F62FE] hover:bg-[#0043CE] text-white" 
+              : "border-slate-300 hover:bg-slate-50"
+            }
             data-testid="bulk-qr-download-btn"
             disabled={devices.length === 0}
           >
             <QrCode className="h-4 w-4 mr-2" />
-            Bulk QR PDF
+            {selectedDeviceIds.size > 0 
+              ? `QR PDF (${selectedDeviceIds.size})` 
+              : 'Bulk QR PDF'
+            }
           </Button>
           <Button 
             onClick={openCreateModal}
