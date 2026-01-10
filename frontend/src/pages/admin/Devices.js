@@ -481,13 +481,6 @@ const Devices = () => {
     return diff;
   };
 
-  const filteredDevices = devices.filter(d => 
-    d.serial_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (d.asset_tag && d.asset_tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
   const statusColors = {
     active: 'bg-emerald-50 text-emerald-600',
     in_repair: 'bg-amber-50 text-amber-600',
