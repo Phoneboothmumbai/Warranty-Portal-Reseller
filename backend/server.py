@@ -495,17 +495,17 @@ class QuickServiceRequest(BaseModel):
 
 
 @api_router.get("/device/{identifier}/qr")
-async def generate_device_qr_code(
-    identifier: str,
-    size: int = Query(default=200, ge=100, le=500),
-    include_label: bool = Query(default=True, description="Include serial number and asset tag below QR")
-):
+async def generate_device_qr_code(identifier: str):
     """
-    Generate QR code for a device (by serial number or asset tag).
+    Generate a printable PDF with single QR code (1.5 inch x 1.5 inch).
     The QR code links to the public device info page.
-    When include_label=True, adds Serial Number and Asset Tag below the QR code.
+    Includes Serial Number and Asset Tag below the QR code.
     """
-    from PIL import Image, ImageDraw, ImageFont
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import inch
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.utils import ImageReader
+    from PIL import Image
     
     # Find device by serial number or asset tag
     device = await db.devices.find_one(
@@ -525,7 +525,6 @@ async def generate_device_qr_code(
     # Get frontend URL from environment or use default
     frontend_url = os.environ.get('FRONTEND_URL', '')
     if not frontend_url:
-        # Try to extract from CORS origins or use a placeholder
         cors_origins = os.environ.get('CORS_ORIGINS', '')
         if cors_origins and cors_origins != '*':
             frontend_url = cors_origins.split(',')[0].strip()
@@ -540,67 +539,72 @@ async def generate_device_qr_code(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
         box_size=10,
-        border=2,
+        border=1,
     )
     qr.add_data(device_url)
     qr.make(fit=True)
     
-    # Create QR image
-    qr_img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
+    # Create QR image at high resolution for PDF
+    qr_img = qr.make_image(fill_color="black", back_color="white")
+    qr_img = qr_img.resize((300, 300), Image.Resampling.LANCZOS)  # High res for PDF
     
-    # Resize QR to requested size
-    qr_img = qr_img.resize((size, size), Image.Resampling.LANCZOS)
+    # Convert PIL image to bytes for ReportLab
+    qr_buffer = BytesIO()
+    qr_img.save(qr_buffer, format='PNG')
+    qr_buffer.seek(0)
+    qr_reader = ImageReader(qr_buffer)
     
-    if include_label:
-        # Create a larger image with space for text below
-        label_height = 50 if device.get('asset_tag') else 35
-        final_img = Image.new('RGB', (size, size + label_height), 'white')
-        final_img.paste(qr_img, (0, 0))
-        
-        # Add text labels
-        draw = ImageDraw.Draw(final_img)
-        
-        # Try to use a reasonable font size based on image size
-        font_size = max(12, size // 15)
-        try:
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
-            font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size - 2)
-        except:
-            font = ImageFont.load_default()
-            font_small = font
-        
-        serial_text = f"S/N: {device.get('serial_number', 'N/A')}"
-        
-        # Center the serial number text
-        bbox = draw.textbbox((0, 0), serial_text, font=font)
-        text_width = bbox[2] - bbox[0]
-        x = (size - text_width) // 2
-        draw.text((x, size + 5), serial_text, fill='black', font=font)
-        
-        # Add asset tag if exists
-        if device.get('asset_tag'):
-            tag_text = f"Tag: {device['asset_tag']}"
-            bbox = draw.textbbox((0, 0), tag_text, font=font_small)
-            text_width = bbox[2] - bbox[0]
-            x = (size - text_width) // 2
-            draw.text((x, size + 5 + font_size + 5), tag_text, fill='gray', font=font_small)
-        
-        img = final_img
-    else:
-        img = qr_img
+    # Create PDF
+    pdf_buffer = BytesIO()
+    c = canvas.Canvas(pdf_buffer, pagesize=A4)
+    page_width, page_height = A4
     
-    # Convert to bytes
-    buffer = BytesIO()
-    img.save(buffer, format='PNG')
-    buffer.seek(0)
+    # QR size: 1.5 inch x 1.5 inch
+    qr_size = 1.5 * inch
+    label_height = 0.4 * inch  # Space for text below QR
+    total_height = qr_size + label_height
+    
+    # Center the QR code on the page
+    x = (page_width - qr_size) / 2
+    y = (page_height - total_height) / 2 + label_height
+    
+    # Draw QR code
+    c.drawImage(qr_reader, x, y, width=qr_size, height=qr_size)
+    
+    # Draw border around QR (for cutting guide)
+    c.setStrokeColorRGB(0.8, 0.8, 0.8)
+    c.setLineWidth(0.5)
+    margin = 5
+    c.rect(x - margin, y - label_height - margin, qr_size + 2*margin, total_height + 2*margin)
+    
+    # Draw labels below QR
+    text_x = page_width / 2
+    
+    # Serial Number (bold)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawCentredString(text_x, y - 15, f"S/N: {device.get('serial_number', 'N/A')}")
+    
+    # Asset Tag (if exists)
+    if device.get('asset_tag'):
+        c.setFont("Helvetica", 9)
+        c.drawCentredString(text_x, y - 28, f"Tag: {device['asset_tag']}")
+    
+    # Device info
+    device_info = f"{device.get('brand', '')} {device.get('model', '')}"
+    if device_info.strip():
+        c.setFont("Helvetica", 8)
+        c.setFillColorRGB(0.5, 0.5, 0.5)
+        c.drawCentredString(text_x, y - 40, device_info[:40])
+    
+    c.save()
+    pdf_buffer.seek(0)
+    
+    filename = f"QR_{device.get('serial_number', identifier)}.pdf"
     
     return StreamingResponse(
-        buffer,
-        media_type="image/png",
-        headers={
-            "Content-Disposition": f"inline; filename=qr_{identifier}.png",
-            "Cache-Control": "public, max-age=86400"
-        }
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
 
