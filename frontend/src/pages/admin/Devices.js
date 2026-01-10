@@ -263,18 +263,18 @@ const Devices = () => {
   };
 
   const handleDownloadQR = (device) => {
-    // Open QR code in new tab for download
-    const qrUrl = `${API}/device/${encodeURIComponent(device.serial_number)}/qr?size=300`;
+    // Download single device QR code as PDF
+    const qrUrl = `${API}/device/${encodeURIComponent(device.serial_number)}/qr`;
     
     // Create a temporary link to download
     const link = document.createElement('a');
     link.href = qrUrl;
-    link.download = `QR_${device.serial_number}.png`;
+    link.download = `QR_${device.serial_number}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    toast.success('QR Code downloading...');
+    toast.success('QR Code PDF downloading...');
   };
 
   const handleOpenPublicPage = (device) => {
