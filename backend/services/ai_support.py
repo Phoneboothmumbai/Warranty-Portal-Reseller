@@ -129,21 +129,8 @@ async def get_ai_response(
         }
     
     try:
-        # Build context-aware system message
-        system_message = SYSTEM_PROMPT
-        
-        if device_context:
-            device_info = f"""
-
-DEVICE CONTEXT (User selected this device):
-- Device: {device_context.get('device_name', 'N/A')} ({device_context.get('device_type', 'N/A')})
-- Serial Number: {device_context.get('serial_number', 'N/A')}
-- Model: {device_context.get('model', 'N/A')}
-- Warranty Status: {device_context.get('warranty_status', 'Unknown')}
-- Warranty Expires: {device_context.get('warranty_end_date', 'N/A')}
-
-Use this information to provide relevant troubleshooting for this specific device."""
-            system_message += device_info
+        # Build system message with device context
+        system_message = build_system_prompt(device_context)
         
         # Initialize chat
         chat = LlmChat(
@@ -174,7 +161,9 @@ Use this information to provide relevant troubleshooting for this specific devic
             "requires assistance",
             "experts will help",
             "our team",
-            "support team"
+            "support team",
+            "needs our technical",
+            "needs technical"
         ]
         should_escalate = any(phrase in response.lower() for phrase in escalation_phrases)
         
