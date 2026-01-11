@@ -5367,14 +5367,29 @@ async def ai_support_chat(data: AISupportMessage, user: dict = Depends(get_curre
                 "is_deleted": {"$ne": True}
             }, {"_id": 0})
             
+            # Get recent service tickets for this device
+            recent_tickets = await db.service_tickets.find({
+                "device_id": data.device_id,
+                "is_deleted": {"$ne": True}
+            }, {"_id": 0, "subject": 1, "status": 1, "created_at": 1}).sort("created_at", -1).limit(3).to_list(3)
+            
+            service_history = ""
+            if recent_tickets:
+                history_items = [f"{t.get('subject', 'Issue')} ({t.get('status', 'unknown')})" for t in recent_tickets]
+                service_history = "; ".join(history_items)
+            
+            # Build comprehensive device context
             device_context = {
                 "device_name": device.get("device_name", ""),
                 "device_type": device.get("device_type", ""),
                 "serial_number": device.get("serial_number", ""),
                 "model": device.get("model", ""),
                 "brand": device.get("brand", ""),
+                "specifications": device.get("specifications", ""),
+                "color_type": device.get("color_type", device.get("printer_type", "")),  # For printers
                 "warranty_status": warranty.get("status", "unknown") if warranty else "no warranty",
-                "warranty_end_date": warranty.get("end_date", "N/A") if warranty else "N/A"
+                "warranty_end_date": warranty.get("end_date", "N/A") if warranty else "N/A",
+                "service_history": service_history
             }
     
     # Get AI response
