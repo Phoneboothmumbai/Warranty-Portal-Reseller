@@ -5401,6 +5401,61 @@ async def generate_ai_summary(data: AISupportSummaryRequest, user: dict = Depend
     summary = generate_ticket_summary(data.messages)
     return summary
 
+class AISupportHistoryRequest(BaseModel):
+    device_id: str
+    messages: list
+    resolved: bool = False
+    session_id: str
+
+@api_router.post("/company/ai-support/save-history")
+async def save_ai_chat_history(data: AISupportHistoryRequest, user: dict = Depends(get_current_company_user)):
+    """
+    Save AI chat history to device service history.
+    Called when chat ends (resolved or escalated to ticket).
+    """
+    # Verify device belongs to company
+    device = await db.devices.find_one({
+        "id": data.device_id,
+        "company_id": user["company_id"]
+    }, {"_id": 0})
+    
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    # Create AI support history record
+    history_record = {
+        "id": str(uuid.uuid4()),
+        "device_id": data.device_id,
+        "company_id": user["company_id"],
+        "user_id": user["id"],
+        "user_name": user["name"],
+        "session_id": data.session_id,
+        "messages": data.messages,
+        "resolved_by_ai": data.resolved,
+        "created_at": get_ist_isoformat(),
+        "type": "ai_support_chat"
+    }
+    
+    await db.ai_support_history.insert_one(history_record)
+    
+    # Also add to device service history for easy lookup
+    service_note = {
+        "id": str(uuid.uuid4()),
+        "type": "ai_support",
+        "description": f"AI Support Chat - {'Resolved' if data.resolved else 'Escalated to ticket'}",
+        "messages_count": len([m for m in data.messages if m.get('role') == 'user']),
+        "resolved": data.resolved,
+        "user_name": user["name"],
+        "created_at": get_ist_isoformat()
+    }
+    
+    await db.devices.update_one(
+        {"id": data.device_id},
+        {"$push": {"ai_support_history": service_note}}
+    )
+    
+    return {"success": True, "history_id": history_record["id"]}
+
 # --- Company Service Tickets ---
 
 @api_router.get("/company/tickets")
