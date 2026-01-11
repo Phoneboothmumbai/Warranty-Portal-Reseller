@@ -3,11 +3,12 @@ import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { 
   Ticket, Search, Filter, Plus, ChevronRight, Clock, 
-  CheckCircle2, AlertCircle, Loader2, X
+  CheckCircle2, AlertCircle, Loader2, X, Bot
 } from 'lucide-react';
 import { useCompanyAuth } from '../../context/CompanyAuthContext';
 import { Button } from '../../components/ui/button';
 import { toast } from 'sonner';
+import AISupportChat from '../../components/AISupportChat';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -20,6 +21,7 @@ const CompanyTickets = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
   const [showNewTicket, setShowNewTicket] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [newTicket, setNewTicket] = useState({
     device_id: searchParams.get('device') || '',
