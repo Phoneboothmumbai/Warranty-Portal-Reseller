@@ -299,6 +299,25 @@ const Devices = () => {
     window.open(`/device/${encodeURIComponent(device.serial_number)}`, '_blank');
   };
 
+  const openServiceHistoryModal = async (device) => {
+    setServiceHistoryDevice(device);
+    setServiceHistoryModalOpen(true);
+    setServiceHistoryLoading(true);
+    
+    try {
+      // Fetch service history for this device
+      const response = await axios.get(`${API}/admin/devices/${device.id}/service-history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setServiceHistoryData(response.data || []);
+    } catch (error) {
+      toast.error('Failed to load service history');
+      setServiceHistoryData([]);
+    } finally {
+      setServiceHistoryLoading(false);
+    }
+  };
+
   // Checkbox selection handlers
   const handleSelectDevice = (deviceId) => {
     setSelectedDeviceIds(prev => {
