@@ -235,7 +235,7 @@ const CompanyTickets = () => {
             <Ticket className="h-12 w-12 text-slate-200 mx-auto mb-3" />
             <p className="text-slate-500">No tickets found</p>
             <Button 
-              onClick={() => setShowNewTicket(true)}
+              onClick={() => setShowAIChat(true)}
               variant="link" 
               className="text-emerald-600 hover:text-emerald-700 mt-2"
             >
