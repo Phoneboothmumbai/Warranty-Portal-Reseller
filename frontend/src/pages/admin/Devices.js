@@ -61,6 +61,10 @@ const Devices = () => {
   const [filterAMC, setFilterAMC] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [serviceHistoryModalOpen, setServiceHistoryModalOpen] = useState(false);
+  const [serviceHistoryDevice, setServiceHistoryDevice] = useState(null);
+  const [serviceHistoryData, setServiceHistoryData] = useState([]);
+  const [serviceHistoryLoading, setServiceHistoryLoading] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [editingDevice, setEditingDevice] = useState(null);
   
