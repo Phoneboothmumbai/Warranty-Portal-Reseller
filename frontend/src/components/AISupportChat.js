@@ -180,6 +180,20 @@ const AISupportChat = ({
             Please select the device you need help with. This is required to provide accurate support.
           </p>
           
+          {/* Search Bar */}
+          {devices.length > 5 && (
+            <div className="mb-4">
+              <input
+                type="text"
+                value={deviceSearch}
+                onChange={(e) => setDeviceSearch(e.target.value)}
+                placeholder="Search by name, model, or serial number..."
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent text-sm"
+                data-testid="device-search-input"
+              />
+            </div>
+          )}
+          
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {devices.length === 0 ? (
               <div className="text-center py-8 text-slate-500">
@@ -187,8 +201,18 @@ const AISupportChat = ({
                 <p>No devices found for your company</p>
                 <p className="text-sm mt-2">Please contact admin to add devices first.</p>
               </div>
+            ) : filteredDevices.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">
+                <p>No devices match your search</p>
+                <button 
+                  onClick={() => setDeviceSearch('')}
+                  className="text-violet-600 text-sm mt-2 hover:underline"
+                >
+                  Clear search
+                </button>
+              </div>
             ) : (
-              devices.map(device => (
+              filteredDevices.map(device => (
                 <button
                   key={device.id}
                   onClick={() => setSelectedDevice(device)}
