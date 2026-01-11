@@ -380,10 +380,6 @@ const CompanyTickets = () => {
             <AISupportChat
               token={token}
               devices={devices}
-              onSkip={() => {
-                setShowAIChat(false);
-                setShowNewTicket(true);
-              }}
               onEscalate={(data) => {
                 setNewTicket({
                   ...newTicket,
