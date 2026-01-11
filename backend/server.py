@@ -5333,6 +5333,74 @@ async def list_company_amc_contracts(user: dict = Depends(get_current_company_us
     
     return result
 
+# --- AI Support Chat ---
+
+class AISupportMessage(BaseModel):
+    message: str
+    session_id: str
+    message_history: list = []
+    device_id: Optional[str] = None
+
+class AISupportSummaryRequest(BaseModel):
+    messages: list
+
+@api_router.post("/company/ai-support/chat")
+async def ai_support_chat(data: AISupportMessage, user: dict = Depends(get_current_company_user)):
+    """
+    AI-powered support chat for troubleshooting before ticket creation.
+    Returns AI response and whether escalation is suggested.
+    """
+    from services.ai_support import get_ai_response
+    
+    # Get device context if device_id provided
+    device_context = None
+    if data.device_id:
+        device = await db.devices.find_one({
+            "id": data.device_id,
+            "company_id": user["company_id"]
+        }, {"_id": 0})
+        
+        if device:
+            # Get warranty info
+            warranty = await db.warranties.find_one({
+                "device_id": data.device_id,
+                "is_deleted": {"$ne": True}
+            }, {"_id": 0})
+            
+            device_context = {
+                "device_name": device.get("device_name", ""),
+                "device_type": device.get("device_type", ""),
+                "serial_number": device.get("serial_number", ""),
+                "model": device.get("model", ""),
+                "brand": device.get("brand", ""),
+                "warranty_status": warranty.get("status", "unknown") if warranty else "no warranty",
+                "warranty_end_date": warranty.get("end_date", "N/A") if warranty else "N/A"
+            }
+    
+    # Get AI response
+    result = await get_ai_response(
+        session_id=f"{user['id']}_{data.session_id}",
+        user_message=data.message,
+        message_history=data.message_history,
+        device_context=device_context
+    )
+    
+    return {
+        "response": result["response"],
+        "should_escalate": result["should_escalate"],
+        "session_id": data.session_id
+    }
+
+@api_router.post("/company/ai-support/generate-summary")
+async def generate_ai_summary(data: AISupportSummaryRequest, user: dict = Depends(get_current_company_user)):
+    """
+    Generate ticket subject and description from AI chat history.
+    """
+    from services.ai_support import generate_ticket_summary
+    
+    summary = generate_ticket_summary(data.messages)
+    return summary
+
 # --- Company Service Tickets ---
 
 @api_router.get("/company/tickets")
