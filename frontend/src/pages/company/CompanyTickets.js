@@ -148,7 +148,7 @@ const CompanyTickets = () => {
           <p className="text-slate-500 mt-1">Track and manage your service tickets</p>
         </div>
         <Button 
-          onClick={() => setShowNewTicket(true)}
+          onClick={() => setShowAIChat(true)}
           className="bg-emerald-600 hover:bg-emerald-700"
           data-testid="new-ticket-btn"
         >
