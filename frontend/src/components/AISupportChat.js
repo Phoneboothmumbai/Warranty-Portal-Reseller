@@ -12,8 +12,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const AISupportChat = ({ 
   token, 
   devices = [], 
-  onEscalate, 
-  onSkip,
+  onEscalate,
   onResolved 
 }) => {
   const [messages, setMessages] = useState([]);
