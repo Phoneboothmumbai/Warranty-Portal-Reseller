@@ -115,16 +115,21 @@ Use this information to provide relevant troubleshooting for this specific devic
         msg = UserMessage(text=user_message)
         response = await chat.send_message(msg)
         
-        # Check if AI suggests escalation
-        should_escalate = any(phrase in response.lower() for phrase in [
+        # Check if AI suggests escalation - more aggressive detection
+        escalation_phrases = [
             "create a support ticket",
             "create a ticket",
             "technical team",
             "escalate",
             "human support",
             "further attention",
-            "service technician"
-        ])
+            "service technician",
+            "requires assistance",
+            "experts will help",
+            "our team",
+            "support team"
+        ]
+        should_escalate = any(phrase in response.lower() for phrase in escalation_phrases)
         
         return {
             "response": response,
