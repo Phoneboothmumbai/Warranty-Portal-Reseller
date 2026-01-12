@@ -1034,6 +1034,7 @@ async def delete_org_user(user_id: str, user: dict = Depends(get_current_org_use
 # ==================== ORG DEVICES CRUD ENDPOINTS ====================
 
 class OrgDeviceCreate(BaseModel):
+    company_id: Optional[str] = ""
     device_type: Optional[str] = ""
     brand: str
     model: str
