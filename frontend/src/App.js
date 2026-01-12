@@ -118,15 +118,15 @@ function App() {
                     <Route path="sites" element={<OrgSites />} />
                     <Route path="users" element={<OrgUsers />} />
                     <Route path="devices" element={<OrgDevices />} />
-                    <Route path="deployments" element={<PlaceholderPage title="Deployments" />} />
+                    <Route path="deployments" element={<OrgDeployments />} />
                     <Route path="parts" element={<OrgParts />} />
-                    <Route path="licenses" element={<PlaceholderPage title="Licenses" />} />
+                    <Route path="licenses" element={<OrgLicenses />} />
                     <Route path="service-history" element={<OrgServiceHistory />} />
-                    <Route path="amc-contracts" element={<PlaceholderPage title="AMC Contracts" />} />
-                    <Route path="supply-products" element={<PlaceholderPage title="Office Supplies - Products" />} />
-                    <Route path="supply-orders" element={<PlaceholderPage title="Office Supplies - Orders" />} />
+                    <Route path="amc-contracts" element={<OrgAMCContracts />} />
+                    <Route path="supply-products" element={<OrgSupplyProducts />} />
+                    <Route path="supply-orders" element={<OrgSupplyOrders />} />
                     <Route path="integrations" element={<OrgSettings />} />
-                    <Route path="billing" element={<PlaceholderPage title="Billing & Subscription" />} />
+                    <Route path="billing" element={<OrgBilling />} />
                     <Route path="settings" element={<PlaceholderPage title="Settings" />} />
                   </Route>
                   
