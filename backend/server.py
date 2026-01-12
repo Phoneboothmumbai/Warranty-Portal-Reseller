@@ -323,11 +323,12 @@ async def get_current_org_user(request: Request) -> dict:
 
 
 @api_router.get("/org/me")
-async def get_current_org(user: dict = Depends(get_current_org_user)):
+async def get_current_org(user_data: dict = Depends(get_current_org_user)):
     """Get current organization and user details"""
     from services.saas_service import get_plan_features, check_limit
     
-    org = user["organization"]
+    user = user_data["user"]
+    org = user_data["organization"]
     
     # Get plan features
     features = await get_plan_features(db, org["id"])
