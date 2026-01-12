@@ -1482,6 +1482,336 @@ async def create_org_service_entry(data: OrgServiceCreate, user: dict = Depends(
     return {"message": "Service entry created", "id": entry["id"]}
 
 
+# ==================== ORG LICENSES ENDPOINTS ====================
+
+@api_router.get("/org/licenses")
+async def get_org_licenses(user: dict = Depends(get_current_org_user)):
+    """Get all licenses for this organization"""
+    org_id = user["organization"]["id"]
+    licenses = await db.org_licenses.find({"organization_id": org_id}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return licenses
+
+
+class OrgLicenseCreate(BaseModel):
+    company_id: Optional[str] = ""
+    software_name: str
+    vendor: Optional[str] = ""
+    license_type: str = "subscription"
+    license_key: Optional[str] = ""
+    seats: int = 1
+    start_date: str
+    end_date: Optional[str] = ""
+    purchase_cost: Optional[float] = None
+    notes: Optional[str] = ""
+
+
+@api_router.post("/org/licenses")
+async def create_org_license(data: OrgLicenseCreate, user: dict = Depends(get_current_org_user)):
+    """Create a new license"""
+    org_id = user["organization"]["id"]
+    
+    license_data = {
+        "id": str(uuid.uuid4()),
+        "organization_id": org_id,
+        **data.model_dump(),
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.org_licenses.insert_one(license_data)
+    return {"message": "License created", "id": license_data["id"]}
+
+
+@api_router.put("/org/licenses/{license_id}")
+async def update_org_license(license_id: str, data: OrgLicenseCreate, user: dict = Depends(get_current_org_user)):
+    """Update a license"""
+    org_id = user["organization"]["id"]
+    
+    existing = await db.org_licenses.find_one({"id": license_id, "organization_id": org_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="License not found")
+    
+    update_data = data.model_dump()
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    
+    await db.org_licenses.update_one({"id": license_id}, {"$set": update_data})
+    return {"message": "License updated"}
+
+
+@api_router.delete("/org/licenses/{license_id}")
+async def delete_org_license(license_id: str, user: dict = Depends(get_current_org_user)):
+    """Delete a license"""
+    org_id = user["organization"]["id"]
+    
+    result = await db.org_licenses.delete_one({"id": license_id, "organization_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="License not found")
+    
+    return {"message": "License deleted"}
+
+
+# ==================== ORG AMC CONTRACTS ENDPOINTS ====================
+
+@api_router.get("/org/amc-contracts")
+async def get_org_amc_contracts(user: dict = Depends(get_current_org_user)):
+    """Get all AMC contracts for this organization"""
+    org_id = user["organization"]["id"]
+    contracts = await db.org_amc_contracts.find({"organization_id": org_id}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return contracts
+
+
+class OrgAMCContractCreate(BaseModel):
+    name: str
+    company_id: Optional[str] = ""
+    amc_type: str = "comprehensive"
+    start_date: str
+    end_date: str
+    contract_value: Optional[float] = None
+    coverage_includes: Optional[str] = ""
+    notes: Optional[str] = ""
+
+
+@api_router.post("/org/amc-contracts")
+async def create_org_amc_contract(data: OrgAMCContractCreate, user: dict = Depends(get_current_org_user)):
+    """Create a new AMC contract"""
+    org_id = user["organization"]["id"]
+    
+    contract = {
+        "id": str(uuid.uuid4()),
+        "organization_id": org_id,
+        **data.model_dump(),
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.org_amc_contracts.insert_one(contract)
+    return {"message": "Contract created", "id": contract["id"]}
+
+
+@api_router.put("/org/amc-contracts/{contract_id}")
+async def update_org_amc_contract(contract_id: str, data: OrgAMCContractCreate, user: dict = Depends(get_current_org_user)):
+    """Update an AMC contract"""
+    org_id = user["organization"]["id"]
+    
+    existing = await db.org_amc_contracts.find_one({"id": contract_id, "organization_id": org_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    
+    update_data = data.model_dump()
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    
+    await db.org_amc_contracts.update_one({"id": contract_id}, {"$set": update_data})
+    return {"message": "Contract updated"}
+
+
+@api_router.delete("/org/amc-contracts/{contract_id}")
+async def delete_org_amc_contract(contract_id: str, user: dict = Depends(get_current_org_user)):
+    """Delete an AMC contract"""
+    org_id = user["organization"]["id"]
+    
+    result = await db.org_amc_contracts.delete_one({"id": contract_id, "organization_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    
+    return {"message": "Contract deleted"}
+
+
+# ==================== ORG DEPLOYMENTS ENDPOINTS ====================
+
+@api_router.get("/org/deployments")
+async def get_org_deployments(user: dict = Depends(get_current_org_user)):
+    """Get all deployments for this organization"""
+    org_id = user["organization"]["id"]
+    deployments = await db.org_deployments.find({"organization_id": org_id}, {"_id": 0}).sort("scheduled_date", -1).to_list(500)
+    return deployments
+
+
+class OrgDeploymentCreate(BaseModel):
+    title: str
+    company_id: Optional[str] = ""
+    site_id: Optional[str] = ""
+    deployment_type: str = "new_installation"
+    scheduled_date: str
+    status: str = "scheduled"
+    device_ids: Optional[list] = []
+    notes: Optional[str] = ""
+
+
+@api_router.post("/org/deployments")
+async def create_org_deployment(data: OrgDeploymentCreate, user: dict = Depends(get_current_org_user)):
+    """Create a new deployment"""
+    org_id = user["organization"]["id"]
+    
+    deployment = {
+        "id": str(uuid.uuid4()),
+        "organization_id": org_id,
+        **data.model_dump(),
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.org_deployments.insert_one(deployment)
+    return {"message": "Deployment created", "id": deployment["id"]}
+
+
+@api_router.put("/org/deployments/{deployment_id}")
+async def update_org_deployment(deployment_id: str, data: OrgDeploymentCreate, user: dict = Depends(get_current_org_user)):
+    """Update a deployment"""
+    org_id = user["organization"]["id"]
+    
+    existing = await db.org_deployments.find_one({"id": deployment_id, "organization_id": org_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    
+    update_data = data.model_dump()
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    
+    await db.org_deployments.update_one({"id": deployment_id}, {"$set": update_data})
+    return {"message": "Deployment updated"}
+
+
+@api_router.delete("/org/deployments/{deployment_id}")
+async def delete_org_deployment(deployment_id: str, user: dict = Depends(get_current_org_user)):
+    """Delete a deployment"""
+    org_id = user["organization"]["id"]
+    
+    result = await db.org_deployments.delete_one({"id": deployment_id, "organization_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    
+    return {"message": "Deployment deleted"}
+
+
+# ==================== ORG SUPPLY PRODUCTS ENDPOINTS ====================
+
+@api_router.get("/org/supply-products")
+async def get_org_supply_products(user: dict = Depends(get_current_org_user)):
+    """Get all supply products for this organization"""
+    org_id = user["organization"]["id"]
+    products = await db.org_supply_products.find({"organization_id": org_id}, {"_id": 0}).sort("name", 1).to_list(500)
+    return products
+
+
+class OrgSupplyProductCreate(BaseModel):
+    name: str
+    sku: Optional[str] = ""
+    category: str = "stationery"
+    description: Optional[str] = ""
+    unit_price: Optional[float] = None
+    stock_quantity: int = 0
+    reorder_level: int = 10
+    status: str = "active"
+
+
+@api_router.post("/org/supply-products")
+async def create_org_supply_product(data: OrgSupplyProductCreate, user: dict = Depends(get_current_org_user)):
+    """Create a new supply product"""
+    org_id = user["organization"]["id"]
+    
+    product = {
+        "id": str(uuid.uuid4()),
+        "organization_id": org_id,
+        **data.model_dump(),
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.org_supply_products.insert_one(product)
+    return {"message": "Product created", "id": product["id"]}
+
+
+@api_router.put("/org/supply-products/{product_id}")
+async def update_org_supply_product(product_id: str, data: OrgSupplyProductCreate, user: dict = Depends(get_current_org_user)):
+    """Update a supply product"""
+    org_id = user["organization"]["id"]
+    
+    existing = await db.org_supply_products.find_one({"id": product_id, "organization_id": org_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    update_data = data.model_dump()
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    
+    await db.org_supply_products.update_one({"id": product_id}, {"$set": update_data})
+    return {"message": "Product updated"}
+
+
+@api_router.delete("/org/supply-products/{product_id}")
+async def delete_org_supply_product(product_id: str, user: dict = Depends(get_current_org_user)):
+    """Delete a supply product"""
+    org_id = user["organization"]["id"]
+    
+    result = await db.org_supply_products.delete_one({"id": product_id, "organization_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    return {"message": "Product deleted"}
+
+
+# ==================== ORG SUPPLY ORDERS ENDPOINTS ====================
+
+@api_router.get("/org/supply-orders")
+async def get_org_supply_orders(user: dict = Depends(get_current_org_user)):
+    """Get all supply orders for this organization"""
+    org_id = user["organization"]["id"]
+    orders = await db.org_supply_orders.find({"organization_id": org_id}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return orders
+
+
+class OrgSupplyOrderCreate(BaseModel):
+    company_id: Optional[str] = ""
+    product_id: str
+    quantity: int = 1
+    status: str = "pending"
+    delivery_date: Optional[str] = ""
+    notes: Optional[str] = ""
+
+
+@api_router.post("/org/supply-orders")
+async def create_org_supply_order(data: OrgSupplyOrderCreate, user: dict = Depends(get_current_org_user)):
+    """Create a new supply order"""
+    org_id = user["organization"]["id"]
+    
+    # Generate order number
+    count = await db.org_supply_orders.count_documents({"organization_id": org_id})
+    order_number = f"ORD-{count + 1:05d}"
+    
+    order = {
+        "id": str(uuid.uuid4()),
+        "organization_id": org_id,
+        "order_number": order_number,
+        **data.model_dump(),
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.org_supply_orders.insert_one(order)
+    return {"message": "Order created", "id": order["id"], "order_number": order_number}
+
+
+@api_router.put("/org/supply-orders/{order_id}")
+async def update_org_supply_order(order_id: str, data: OrgSupplyOrderCreate, user: dict = Depends(get_current_org_user)):
+    """Update a supply order"""
+    org_id = user["organization"]["id"]
+    
+    existing = await db.org_supply_orders.find_one({"id": order_id, "organization_id": org_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    update_data = data.model_dump()
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    
+    await db.org_supply_orders.update_one({"id": order_id}, {"$set": update_data})
+    return {"message": "Order updated"}
+
+
+@api_router.delete("/org/supply-orders/{order_id}")
+async def delete_org_supply_order(order_id: str, user: dict = Depends(get_current_org_user)):
+    """Delete a supply order"""
+    org_id = user["organization"]["id"]
+    
+    result = await db.org_supply_orders.delete_one({"id": order_id, "organization_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    return {"message": "Order deleted"}
+
+
 # ==================== ORG MASTER DATA ====================
 
 @api_router.get("/org/masters")
