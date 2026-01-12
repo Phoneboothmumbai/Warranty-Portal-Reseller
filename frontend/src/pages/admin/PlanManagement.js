@@ -45,7 +45,7 @@ const PlanManagement = () => {
   }, []);
 
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('admin_token');
     return { Authorization: `Bearer ${token}` };
   };
 
