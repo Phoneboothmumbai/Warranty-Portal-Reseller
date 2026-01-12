@@ -237,6 +237,19 @@ const OrgDevices = () => {
           />
         </div>
         <select
+          value={filterCompany}
+          onChange={(e) => {
+            setFilterCompany(e.target.value);
+            setSearchParams(e.target.value ? { company: e.target.value } : {});
+          }}
+          className="px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+        >
+          <option value="">All Companies</option>
+          {companies.map(company => (
+            <option key={company.id} value={company.id}>{company.name}</option>
+          ))}
+        </select>
+        <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
           className="px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
