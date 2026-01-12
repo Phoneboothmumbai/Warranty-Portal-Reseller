@@ -11,6 +11,8 @@ import WarrantyResult from "./pages/public/WarrantyResult";
 import PublicDevicePage from "./pages/public/PublicDevicePage";
 import SignupPage from "./pages/public/SignupPage";
 import OrgLoginPage from "./pages/org/OrgLoginPage";
+import OrgDashboard from "./pages/org/OrgDashboard";
+import OrgSettings from "./pages/org/OrgSettings";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
