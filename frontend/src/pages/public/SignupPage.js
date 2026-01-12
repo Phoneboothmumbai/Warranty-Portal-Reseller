@@ -193,8 +193,8 @@ const SignupPage = () => {
       
       toast.success('Account created successfully!');
       
-      // Redirect to org dashboard
-      navigate('/org/dashboard');
+      // Redirect to org admin dashboard
+      navigate('/org/admin/dashboard');
       
     } catch (error) {
       const message = error.response?.data?.detail || 'Failed to create account';
