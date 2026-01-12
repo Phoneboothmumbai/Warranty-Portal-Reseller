@@ -23,11 +23,14 @@ Build an enterprise-grade Warranty & Asset Tracking Portal with:
   - Subdomain validation (4-32 chars, starts with letter, alphanumeric + hyphens)
   - Reserved subdomains blocked (admin, www, api, support, etc.)
   
-- **Organization Dashboard:**
-  - Current plan display with trial status and expiry date
-  - Usage stats (devices, team members, sub-companies)
-  - Feature access indicators (AI Support Bot, QR codes, etc.)
-  - Quick actions for managing devices, team, integrations, billing
+- **Organization Admin Portal (Full Admin Experience):**
+  - Complete sidebar navigation matching Super Admin portal
+  - Dashboard with stats (Sites, Users, Devices, Parts)
+  - Warranty Status section (Active, Expired, Active AMC)
+  - Recent Devices list with quick actions
+  - All features scoped to organization's data
+  - Subdomain displayed in header (e.g., demo-tech.assetguard.com)
+  - Plan badge showing current subscription tier
   
 - **Ticketing System Integration (Per-Tenant):**
   - Settings page for configuring external ticketing system
@@ -49,6 +52,9 @@ Build an enterprise-grade Warranty & Asset Tracking Portal with:
   - `POST /api/signup` - Create organization with owner account
   - `POST /api/org/login` - Organization user authentication
   - `GET /api/org/me` - Dashboard data (user, org, plan, usage)
+  - `GET /api/org/dashboard` - Org-specific stats
+  - `GET /api/org/dashboard/alerts` - Warranty/AMC expiry alerts
+  - `GET /api/org/devices` - Organization devices with search
   - `GET/PUT /api/org/settings` - Ticketing integration settings
   - `GET/POST/PUT/PATCH /api/admin/plans` - Plan CRUD operations
 
