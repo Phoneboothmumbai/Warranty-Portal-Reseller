@@ -6,11 +6,51 @@ Build an enterprise-grade Warranty & Asset Tracking Portal with:
 - Comprehensive admin panel with JWT authentication
 - Management of Companies, Users, Devices, Parts, and AMC (Annual Maintenance Contract) data
 
-## Current Status: DEPLOYED & LIVE
-- **Production URL:** http://65.20.78.143
-- **Admin Credentials:** ck@motta.in / admin123
+**PIVOT (Jan 2026):** Transform into a multi-tenant SaaS platform with self-serve onboarding and subscriptions.
+
+## Current Status: SaaS Transformation IN PROGRESS
+- **Preview URL:** https://deviceguard-15.preview.emergentagent.com
+- **Admin Credentials:** admin@demo.com / admin123
+- **Test Org:** john@demotech.com / password123 (subdomain: demo-tech)
 
 ## What's Been Implemented
+
+### SaaS Multi-Tenant Foundation (Jan 12, 2026) - COMPLETED
+- **Self-Serve Signup with Subdomain Selection:**
+  - Public landing page with pricing tiers (Free, Pro, Enterprise)
+  - Multi-step signup flow with real-time subdomain availability check
+  - Auto-generate subdomain from organization name
+  - Subdomain validation (4-32 chars, starts with letter, alphanumeric + hyphens)
+  - Reserved subdomains blocked (admin, www, api, support, etc.)
+  
+- **Organization Dashboard:**
+  - Current plan display with trial status and expiry date
+  - Usage stats (devices, team members, sub-companies)
+  - Feature access indicators (AI Support Bot, QR codes, etc.)
+  - Quick actions for managing devices, team, integrations, billing
+  
+- **Ticketing System Integration (Per-Tenant):**
+  - Settings page for configuring external ticketing system
+  - Feature-gated to Pro plan and above
+  - Free plan users see upgrade prompt
+  - Connection test functionality
+  - No mention of "osTicket" - uses generic "Ticketing System" terminology
+  
+- **Super Admin Plan Management:**
+  - View all subscription plans (Free, Pro, Enterprise)
+  - Create new plans with custom pricing and features
+  - Edit existing plans (name, description, pricing, features)
+  - Toggle plan active/inactive status
+  - Configure feature limits (devices, users, companies)
+  - Feature toggles (AI bot, QR codes, API access, etc.)
+
+- **Backend APIs (30/30 tests passed):**
+  - `GET /api/check-subdomain/{subdomain}` - Real-time availability check
+  - `POST /api/signup` - Create organization with owner account
+  - `POST /api/org/login` - Organization user authentication
+  - `GET /api/org/me` - Dashboard data (user, org, plan, usage)
+  - `GET/PUT /api/org/settings` - Ticketing integration settings
+  - `GET/POST/PUT/PATCH /api/admin/plans` - Plan CRUD operations
 
 ### Phase 1 (MVP) - COMPLETED
 - Public warranty search by serial number/asset tag
