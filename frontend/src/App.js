@@ -103,6 +103,7 @@ function App() {
                   <Route path="/org/admin" element={<OrgAdminLayout />}>
                     <Route index element={<Navigate to="/org/admin/dashboard" replace />} />
                     <Route path="dashboard" element={<OrgAdminDashboard />} />
+                    <Route path="companies" element={<OrgCompanies />} />
                     <Route path="sites" element={<OrgSites />} />
                     <Route path="users" element={<OrgUsers />} />
                     <Route path="devices" element={<OrgDevices />} />
