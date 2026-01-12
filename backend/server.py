@@ -1065,6 +1065,7 @@ async def create_org_device(data: OrgDeviceCreate, user: dict = Depends(get_curr
     device = {
         "id": str(uuid.uuid4()),
         "organization_id": org_id,
+        "company_id": data.company_id,
         "device_type": data.device_type,
         "brand": data.brand,
         "model": data.model,
