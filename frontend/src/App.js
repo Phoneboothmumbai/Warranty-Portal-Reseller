@@ -90,8 +90,8 @@ function App() {
                   <Route path="/device/:identifier" element={<PublicDevicePage />} />
                   <Route path="/signup" element={<SignupPage />} />
                   <Route path="/org/login" element={<OrgLoginPage />} />
-                  <Route path="/org/dashboard" element={<OrgDashboard />} />
-                  <Route path="/org/settings" element={<OrgSettings />} />
+                  <Route path="/org/dashboard" element={<Navigate to="/org/admin/dashboard" replace />} />
+                  <Route path="/org/settings" element={<Navigate to="/org/admin/integrations" replace />} />
                   
                   {/* Org Admin Portal Routes */}
                   <Route path="/org/admin" element={<OrgAdminLayout />}>
