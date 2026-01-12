@@ -296,6 +296,12 @@ const OrgDevices = () => {
                           <div>
                             <p className="font-medium text-slate-900">{device.brand} {device.model}</p>
                             <p className="text-sm text-slate-500">{device.device_type || 'Device'}</p>
+                            {device.company_id && (
+                              <p className="text-xs text-blue-600 flex items-center gap-1">
+                                <Building2 className="h-3 w-3" />
+                                {getCompanyName(device.company_id)}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
