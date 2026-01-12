@@ -17,6 +17,11 @@ import OrgSettings from "./pages/org/OrgSettings";
 // Org Admin Portal
 import OrgAdminLayout from "./layouts/OrgAdminLayout";
 import OrgAdminDashboard from "./pages/org/OrgAdminDashboard";
+import OrgSites from "./pages/org/OrgSites";
+import OrgUsers from "./pages/org/OrgUsers";
+import OrgDevices from "./pages/org/OrgDevices";
+import OrgParts from "./pages/org/OrgParts";
+import OrgServiceHistory from "./pages/org/OrgServiceHistory";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
