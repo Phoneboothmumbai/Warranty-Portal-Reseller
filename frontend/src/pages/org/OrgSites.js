@@ -22,13 +22,16 @@ const SITE_TYPES = [
 const OrgSites = () => {
   const { orgData } = useOutletContext();
   const [sites, setSites] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterCompany, setFilterCompany] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSite, setEditingSite] = useState(null);
   
   const [formData, setFormData] = useState({
     name: '',
+    company_id: '',
     site_type: 'office',
     address: '',
     city: '',
@@ -46,20 +49,28 @@ const OrgSites = () => {
   };
 
   useEffect(() => {
-    fetchSites();
-  }, []);
+    fetchData();
+  }, [filterCompany]);
 
-  const fetchSites = async () => {
+  const fetchData = async () => {
     try {
-      const response = await axios.get(`${API}/api/org/sites`, {
-        headers: getAuthHeaders()
-      });
-      setSites(response.data);
+      const params = filterCompany ? { company_id: filterCompany } : {};
+      const [sitesRes, companiesRes] = await Promise.all([
+        axios.get(`${API}/api/org/sites`, { params, headers: getAuthHeaders() }),
+        axios.get(`${API}/api/org/companies`, { headers: getAuthHeaders() })
+      ]);
+      setSites(sitesRes.data || []);
+      setCompanies(companiesRes.data || []);
     } catch (error) {
-      toast.error('Failed to fetch sites');
+      toast.error('Failed to fetch data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCompanyName = (companyId) => {
+    const company = companies.find(c => c.id === companyId);
+    return company?.name || '-';
   };
 
   const handleSubmit = async (e) => {
