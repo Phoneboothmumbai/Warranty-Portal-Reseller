@@ -1115,6 +1115,7 @@ async def update_org_device(device_id: str, data: OrgDeviceCreate, user: dict = 
         raise HTTPException(status_code=404, detail="Device not found")
     
     update_data = {
+        "company_id": data.company_id,
         "device_type": data.device_type,
         "brand": data.brand,
         "model": data.model,
