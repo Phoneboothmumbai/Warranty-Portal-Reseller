@@ -35,6 +35,7 @@ async def create_organization(
     owner_name: str,
     owner_email: str,
     owner_password: str,
+    slug: Optional[str] = None,
     owner_phone: Optional[str] = None,
     industry: Optional[str] = None,
     company_size: Optional[str] = None
@@ -45,14 +46,21 @@ async def create_organization(
     """
     from models.saas import Organization, OrgUser, DEFAULT_PLANS
     
-    # Generate unique slug
-    base_slug = generate_slug(name)
-    slug = base_slug
-    counter = 1
+    # Use provided slug or generate from name
+    if slug:
+        final_slug = slug.lower().strip()
+    else:
+        base_slug = generate_slug(name)
+        final_slug = base_slug
+        counter = 1
+        
+        while await db.organizations.find_one({"slug": final_slug}):
+            final_slug = f"{base_slug}-{counter}"
+            counter += 1
     
-    while await db.organizations.find_one({"slug": slug}):
-        slug = f"{base_slug}-{counter}"
-        counter += 1
+    # Check if slug already exists
+    if await db.organizations.find_one({"slug": final_slug}):
+        return {"error": "Subdomain already taken"}
     
     # Check if email already exists
     existing_user = await db.org_users.find_one({"email": owner_email.lower()})
