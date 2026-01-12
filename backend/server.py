@@ -306,16 +306,15 @@ async def get_current_org_user(request: Request) -> dict:
         user_id = payload.get("sub")
         org_id = payload.get("org_id")
         
-        user = await db.org_users.find_one({"id": user_id, "is_active": True}, {"_id": 0})
+        user = await db.org_users.find_one({"id": user_id}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         
-        org = await db.organizations.find_one({"id": org_id, "is_active": True}, {"_id": 0})
+        org = await db.organizations.find_one({"id": org_id}, {"_id": 0})
         if not org:
             raise HTTPException(status_code=401, detail="Organization not found")
         
-        user["organization"] = org
-        return user
+        return {"user": user, "organization": org}
         
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
