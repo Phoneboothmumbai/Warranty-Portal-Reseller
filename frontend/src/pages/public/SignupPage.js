@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Shield, ArrowRight, Loader2, Check, Building2, User, Mail, Lock, Phone } from 'lucide-react';
+import { Shield, ArrowRight, Loader2, Check, Building2, User, Mail, Lock, Phone, Globe, X, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -14,8 +14,12 @@ const SignupPage = () => {
   
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [subdomainChecking, setSubdomainChecking] = useState(false);
+  const [subdomainAvailable, setSubdomainAvailable] = useState(null);
+  const [subdomainError, setSubdomainError] = useState('');
   const [formData, setFormData] = useState({
     organization_name: '',
+    subdomain: '',
     owner_name: '',
     owner_email: '',
     owner_password: '',
@@ -44,13 +48,85 @@ const SignupPage = () => {
     { value: '500+', label: '500+ employees' }
   ];
 
+  // Generate slug from organization name
+  const generateSlug = (name) => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/[\s_]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  };
+
+  // Debounced subdomain check
+  const checkSubdomain = useCallback(async (subdomain) => {
+    if (!subdomain || subdomain.length < 4) {
+      setSubdomainAvailable(null);
+      setSubdomainError(subdomain.length > 0 ? 'Subdomain must be at least 4 characters' : '');
+      return;
+    }
+
+    setSubdomainChecking(true);
+    setSubdomainError('');
+    
+    try {
+      const response = await axios.get(`${API}/api/check-subdomain/${subdomain}`);
+      setSubdomainAvailable(response.data.available);
+      if (!response.data.available) {
+        setSubdomainError(response.data.reason || 'Subdomain not available');
+      }
+    } catch (error) {
+      setSubdomainAvailable(false);
+      setSubdomainError('Error checking subdomain');
+    } finally {
+      setSubdomainChecking(false);
+    }
+  }, []);
+
+  // Debounce effect for subdomain check
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.subdomain) {
+        checkSubdomain(formData.subdomain);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [formData.subdomain, checkSubdomain]);
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    
+    if (name === 'organization_name') {
+      // Auto-generate subdomain from org name if subdomain is empty or was auto-generated
+      const newSlug = generateSlug(value);
+      setFormData({ 
+        ...formData, 
+        [name]: value,
+        subdomain: formData.subdomain === generateSlug(formData.organization_name) ? newSlug : formData.subdomain || newSlug
+      });
+    } else if (name === 'subdomain') {
+      // Clean subdomain input
+      const cleanedSubdomain = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      setFormData({ ...formData, [name]: cleanedSubdomain });
+      setSubdomainAvailable(null);
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const validateStep1 = () => {
     if (!formData.organization_name.trim()) {
       toast.error('Please enter organization name');
+      return false;
+    }
+    if (!formData.subdomain || formData.subdomain.length < 4) {
+      toast.error('Please choose a valid subdomain (at least 4 characters)');
+      return false;
+    }
+    if (subdomainAvailable === false) {
+      toast.error('Please choose an available subdomain');
       return false;
     }
     if (!formData.industry) {
@@ -91,9 +167,24 @@ const SignupPage = () => {
     
     if (!validateStep2()) return;
 
+    // Final subdomain check
+    if (subdomainAvailable !== true) {
+      toast.error('Please wait for subdomain availability check');
+      return;
+    }
+
     setLoading(true);
     try {
-      const response = await axios.post(`${API}/api/signup`, formData);
+      const response = await axios.post(`${API}/api/signup`, {
+        organization_name: formData.organization_name,
+        subdomain: formData.subdomain,
+        owner_name: formData.owner_name,
+        owner_email: formData.owner_email,
+        owner_password: formData.owner_password,
+        owner_phone: formData.owner_phone,
+        industry: formData.industry,
+        company_size: formData.company_size
+      });
       
       // Store token and redirect
       localStorage.setItem('orgToken', response.data.access_token);
