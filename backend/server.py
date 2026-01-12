@@ -110,6 +110,370 @@ async def get_public_settings():
         "company_name": settings.get("company_name", "Warranty Portal")
     }
 
+# ==================== SAAS / SUBSCRIPTION ENDPOINTS ====================
+
+@api_router.get("/plans")
+async def get_pricing_plans():
+    """Get all active pricing plans (public)"""
+    # Check if plans exist in DB, otherwise use defaults
+    plans = await db.pricing_plans.find({"is_active": True}, {"_id": 0}).sort("sort_order", 1).to_list(10)
+    if not plans:
+        plans = DEFAULT_PLANS
+    return {"plans": plans}
+
+
+class SignupRequest(BaseModel):
+    organization_name: str
+    owner_name: str
+    owner_email: str
+    owner_password: str
+    owner_phone: Optional[str] = None
+    industry: Optional[str] = None
+    company_size: Optional[str] = None
+
+
+@api_router.post("/signup")
+async def signup_organization(data: SignupRequest):
+    """
+    Self-serve signup: Create new organization with owner account.
+    Starts with free plan + 14-day trial of Pro features.
+    """
+    from services.saas_service import create_organization
+    
+    # Validate password
+    if len(data.owner_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    
+    result = await create_organization(
+        db=db,
+        name=data.organization_name,
+        owner_name=data.owner_name,
+        owner_email=data.owner_email,
+        owner_password=data.owner_password,
+        owner_phone=data.owner_phone,
+        industry=data.industry,
+        company_size=data.company_size
+    )
+    
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    
+    # Generate JWT token for auto-login
+    org = result["organization"]
+    user = result["user"]
+    
+    token_data = {
+        "sub": user["id"],
+        "email": user["email"],
+        "org_id": org["id"],
+        "role": "owner",
+        "type": "org_user"
+    }
+    access_token = create_access_token(token_data, expires_delta=timedelta(days=7))
+    
+    return {
+        "message": "Organization created successfully",
+        "organization": org,
+        "user": user,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+
+class OrgLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+@api_router.post("/org/login")
+async def org_user_login(data: OrgLoginRequest):
+    """Login for organization users (admins/staff)"""
+    from services.saas_service import authenticate_org_user
+    
+    result = await authenticate_org_user(db, data.email, data.password)
+    
+    if not result:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    user = result["user"]
+    org = result["organization"]
+    
+    # Check if org is active
+    if not org.get("is_active"):
+        raise HTTPException(status_code=403, detail="Organization is inactive")
+    
+    token_data = {
+        "sub": user["id"],
+        "email": user["email"],
+        "org_id": org["id"],
+        "role": user["role"],
+        "type": "org_user"
+    }
+    access_token = create_access_token(token_data, expires_delta=timedelta(days=7))
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "role": user["role"]
+        },
+        "organization": {
+            "id": org["id"],
+            "name": org["name"],
+            "slug": org["slug"],
+            "plan_id": org.get("plan_id", "plan_free"),
+            "subscription_status": org.get("subscription_status", "trialing"),
+            "trial_ends_at": org.get("trial_ends_at")
+        }
+    }
+
+
+async def get_current_org_user(request: Request) -> dict:
+    """Get current authenticated org user from JWT token"""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "org_user":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        
+        user_id = payload.get("sub")
+        org_id = payload.get("org_id")
+        
+        user = await db.org_users.find_one({"id": user_id, "is_active": True}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        org = await db.organizations.find_one({"id": org_id, "is_active": True}, {"_id": 0})
+        if not org:
+            raise HTTPException(status_code=401, detail="Organization not found")
+        
+        user["organization"] = org
+        return user
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+@api_router.get("/org/me")
+async def get_current_org(user: dict = Depends(get_current_org_user)):
+    """Get current organization and user details"""
+    from services.saas_service import get_plan_features, check_limit
+    
+    org = user["organization"]
+    
+    # Get plan features
+    features = await get_plan_features(db, org["id"])
+    
+    # Get usage
+    usage = await db.usage_records.find_one({"org_id": org["id"]}, {"_id": 0})
+    
+    # Get plan details
+    plan = next((p for p in DEFAULT_PLANS if p["id"] == org.get("plan_id")), DEFAULT_PLANS[0])
+    
+    return {
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "role": user["role"]
+        },
+        "organization": {
+            "id": org["id"],
+            "name": org["name"],
+            "slug": org["slug"],
+            "plan_id": org.get("plan_id"),
+            "subscription_status": org.get("subscription_status"),
+            "trial_ends_at": org.get("trial_ends_at")
+        },
+        "plan": {
+            "id": plan["id"],
+            "name": plan["display_name"],
+            "features": features
+        },
+        "usage": usage
+    }
+
+
+@api_router.get("/org/subscription")
+async def get_subscription_details(user: dict = Depends(get_current_org_user)):
+    """Get subscription and billing details"""
+    org = user["organization"]
+    
+    # Get current plan
+    plan = next((p for p in DEFAULT_PLANS if p["id"] == org.get("plan_id")), DEFAULT_PLANS[0])
+    
+    # Get subscription from Razorpay if exists
+    subscription = None
+    if org.get("subscription_id"):
+        from services.razorpay_service import get_subscription
+        result = get_subscription(org["subscription_id"])
+        if result.get("success"):
+            subscription = result["subscription"]
+    
+    # Get recent payments
+    payments = await db.payments.find(
+        {"org_id": org["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(10).to_list(10)
+    
+    return {
+        "plan": plan,
+        "subscription_status": org.get("subscription_status"),
+        "trial_ends_at": org.get("trial_ends_at"),
+        "subscription": subscription,
+        "payments": payments
+    }
+
+
+class CreateSubscriptionRequest(BaseModel):
+    plan_id: str
+    billing_cycle: str = "monthly"  # monthly or yearly
+
+
+@api_router.post("/org/subscription/create")
+async def create_subscription(data: CreateSubscriptionRequest, user: dict = Depends(get_current_org_user)):
+    """Create Razorpay subscription for a plan"""
+    from services.razorpay_service import create_subscription, create_customer, is_razorpay_configured
+    
+    if not is_razorpay_configured():
+        raise HTTPException(status_code=503, detail="Payment system not configured")
+    
+    org = user["organization"]
+    
+    # Get plan
+    plan = next((p for p in DEFAULT_PLANS if p["id"] == data.plan_id), None)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    if plan["name"] == "free":
+        raise HTTPException(status_code=400, detail="Cannot subscribe to free plan")
+    
+    # Get Razorpay plan ID
+    razorpay_plan_id = plan.get(f"razorpay_plan_id_{data.billing_cycle}")
+    if not razorpay_plan_id:
+        raise HTTPException(status_code=400, detail="Plan not available for this billing cycle")
+    
+    # Create or get customer
+    customer_result = create_customer(
+        name=user["name"],
+        email=user["email"],
+        phone=user.get("phone")
+    )
+    
+    if customer_result.get("error"):
+        raise HTTPException(status_code=500, detail="Failed to create customer")
+    
+    customer_id = customer_result["customer"]["id"]
+    
+    # Create subscription
+    result = create_subscription(
+        plan_id=razorpay_plan_id,
+        customer_id=customer_id,
+        notes={
+            "org_id": org["id"],
+            "plan_id": data.plan_id,
+            "user_id": user["id"]
+        }
+    )
+    
+    if result.get("error"):
+        raise HTTPException(status_code=500, detail=f"Failed to create subscription: {result['error']}")
+    
+    subscription = result["subscription"]
+    
+    # Save subscription record
+    sub_record = {
+        "id": str(uuid.uuid4()),
+        "org_id": org["id"],
+        "razorpay_subscription_id": subscription["id"],
+        "razorpay_customer_id": customer_id,
+        "razorpay_plan_id": razorpay_plan_id,
+        "plan_id": data.plan_id,
+        "billing_cycle": data.billing_cycle,
+        "amount": plan[f"price_{data.billing_cycle}"],
+        "currency": "INR",
+        "status": subscription["status"],
+        "created_at": datetime.utcnow().isoformat()
+    }
+    await db.subscriptions.insert_one(sub_record)
+    
+    return {
+        "subscription_id": subscription["id"],
+        "short_url": subscription.get("short_url"),  # Payment link
+        "status": subscription["status"]
+    }
+
+
+@api_router.post("/webhooks/razorpay")
+async def razorpay_webhook(request: Request):
+    """Handle Razorpay webhook events"""
+    from services.razorpay_service import verify_webhook_signature
+    from services.saas_service import (
+        handle_subscription_activated,
+        handle_subscription_cancelled,
+        handle_payment_failed
+    )
+    
+    payload = await request.body()
+    signature = request.headers.get("X-Razorpay-Signature", "")
+    
+    # Verify signature
+    if not verify_webhook_signature(payload.decode(), signature):
+        raise HTTPException(status_code=400, detail="Invalid signature")
+    
+    data = await request.json()
+    event = data.get("event")
+    payload_data = data.get("payload", {})
+    
+    logger.info(f"Razorpay webhook: {event}")
+    
+    # Handle events
+    if event == "subscription.activated":
+        subscription = payload_data.get("subscription", {}).get("entity", {})
+        org_id = subscription.get("notes", {}).get("org_id")
+        if org_id:
+            await handle_subscription_activated(db, org_id, subscription)
+    
+    elif event == "subscription.cancelled":
+        subscription = payload_data.get("subscription", {}).get("entity", {})
+        org_id = subscription.get("notes", {}).get("org_id")
+        if org_id:
+            await handle_subscription_cancelled(db, org_id)
+    
+    elif event == "subscription.halted" or event == "payment.failed":
+        subscription = payload_data.get("subscription", {}).get("entity", {})
+        org_id = subscription.get("notes", {}).get("org_id")
+        if org_id:
+            await handle_payment_failed(db, org_id)
+    
+    elif event == "payment.captured":
+        payment = payload_data.get("payment", {}).get("entity", {})
+        # Save payment record
+        payment_record = {
+            "id": str(uuid.uuid4()),
+            "org_id": payment.get("notes", {}).get("org_id"),
+            "razorpay_payment_id": payment.get("id"),
+            "razorpay_order_id": payment.get("order_id"),
+            "amount": payment.get("amount"),
+            "currency": payment.get("currency", "INR"),
+            "status": "captured",
+            "method": payment.get("method"),
+            "created_at": datetime.utcnow().isoformat()
+        }
+        if payment_record["org_id"]:
+            await db.payments.insert_one(payment_record)
+    
+    return {"status": "ok"}
+
 @api_router.get("/masters/public")
 async def get_public_masters(
     master_type: Optional[str] = None,
