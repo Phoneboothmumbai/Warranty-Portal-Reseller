@@ -10,6 +10,7 @@ import LandingPage from "./pages/public/LandingPage";
 import WarrantyResult from "./pages/public/WarrantyResult";
 import PublicDevicePage from "./pages/public/PublicDevicePage";
 import SignupPage from "./pages/public/SignupPage";
+import OrgWarrantyPage from "./pages/public/OrgWarrantyPage";
 import OrgLoginPage from "./pages/org/OrgLoginPage";
 import OrgDashboard from "./pages/org/OrgDashboard";
 import OrgSettings from "./pages/org/OrgSettings";
