@@ -9,7 +9,7 @@ Build an enterprise-grade Warranty & Asset Tracking Portal with:
 **PIVOT (Jan 2026):** Transform into a multi-tenant SaaS platform with self-serve onboarding and subscriptions.
 
 ## Current Status: SaaS Transformation IN PROGRESS
-- **Preview URL:** https://deviceguard-15.preview.emergentagent.com
+- **Preview URL:** https://trackport-2.preview.emergentagent.com
 - **Admin Credentials:** admin@demo.com / admin123
 - **Test Org:** john@demotech.com / password123 (subdomain: demo-tech)
 
