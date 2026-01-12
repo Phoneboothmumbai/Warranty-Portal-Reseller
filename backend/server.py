@@ -973,6 +973,7 @@ async def create_org_user(data: OrgUserCreate, user: dict = Depends(get_current_
     new_user = {
         "id": str(uuid.uuid4()),
         "organization_id": org_id,
+        "company_id": data.company_id,
         "name": data.name,
         "email": data.email,
         "phone": data.phone,
@@ -999,6 +1000,7 @@ async def update_org_user(user_id: str, data: OrgUserCreate, user: dict = Depend
     update_data = {
         "name": data.name,
         "email": data.email,
+        "company_id": data.company_id,
         "phone": data.phone,
         "role": data.role,
         "updated_at": datetime.utcnow().isoformat()
