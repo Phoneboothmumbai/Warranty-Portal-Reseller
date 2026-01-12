@@ -251,7 +251,42 @@ const SignupPage = () => {
                       onChange={handleChange}
                       placeholder="Acme Corporation"
                       className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      data-testid="org-name-input"
                     />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Choose Your Subdomain *
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <input
+                      type="text"
+                      name="subdomain"
+                      value={formData.subdomain}
+                      onChange={handleChange}
+                      placeholder="your-company"
+                      className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
+                        subdomainError ? 'border-red-300 bg-red-50' : 
+                        subdomainAvailable === true ? 'border-green-300 bg-green-50' : 
+                        'border-slate-200'
+                      }`}
+                      data-testid="subdomain-input"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {subdomainChecking && <Loader2 className="h-5 w-5 text-slate-400 animate-spin" />}
+                      {!subdomainChecking && subdomainAvailable === true && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                      {!subdomainChecking && subdomainAvailable === false && <X className="h-5 w-5 text-red-500" />}
+                    </div>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className="text-xs text-slate-500">
+                      {formData.subdomain ? `${formData.subdomain}.assetguard.com` : 'your-company.assetguard.com'}
+                    </span>
+                    {subdomainError && <span className="text-xs text-red-500">{subdomainError}</span>}
+                    {subdomainAvailable === true && <span className="text-xs text-green-600">Available!</span>}
                   </div>
                 </div>
 
