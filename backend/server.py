@@ -685,13 +685,17 @@ async def get_org_devices(
     user: dict = Depends(get_current_org_user),
     limit: int = 50,
     skip: int = 0,
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    company_id: Optional[str] = None
 ):
     """Get devices for this organization"""
     org = user["organization"]
     org_id = org["id"]
     
     query = {"organization_id": org_id}
+    
+    if company_id:
+        query["company_id"] = company_id
     
     if search:
         search_regex = {"$regex": search.strip(), "$options": "i"}
