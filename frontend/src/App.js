@@ -73,6 +73,8 @@ function App() {
                   <Route path="/device/:identifier" element={<PublicDevicePage />} />
                   <Route path="/signup" element={<SignupPage />} />
                   <Route path="/org/login" element={<OrgLoginPage />} />
+                  <Route path="/org/dashboard" element={<OrgDashboard />} />
+                  <Route path="/org/settings" element={<OrgSettings />} />
                   
                   {/* Admin Routes */}
                   <Route path="/admin/login" element={<AdminLogin />} />
