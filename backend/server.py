@@ -533,6 +533,199 @@ async def razorpay_webhook(request: Request):
     
     return {"status": "ok"}
 
+
+# ==================== ORG SETTINGS ENDPOINTS ====================
+
+class OrgSettingsUpdate(BaseModel):
+    ticketing_url: Optional[str] = None
+    ticketing_api_key: Optional[str] = None
+    ticketing_enabled: bool = False
+
+
+@api_router.get("/org/settings")
+async def get_org_settings(user: dict = Depends(get_current_org_user)):
+    """Get organization settings including ticketing integration"""
+    org = user["organization"]
+    
+    return {
+        "ticketing_url": org.get("osticket_url") or "",
+        "ticketing_api_key": org.get("osticket_api_key") or "",
+        "ticketing_enabled": org.get("osticket_enabled", False)
+    }
+
+
+@api_router.put("/org/settings")
+async def update_org_settings(data: OrgSettingsUpdate, user: dict = Depends(get_current_org_user)):
+    """Update organization settings"""
+    from services.saas_service import get_plan_features
+    
+    org = user["organization"]
+    
+    # Check if org has access to ticketing integration
+    features = await get_plan_features(db, org["id"])
+    if not features.get("osticket_integration", False):
+        if data.ticketing_enabled:
+            raise HTTPException(status_code=403, detail="Ticketing integration requires Pro plan or higher")
+    
+    update_data = {
+        "osticket_url": data.ticketing_url,
+        "osticket_api_key": data.ticketing_api_key,
+        "osticket_enabled": data.ticketing_enabled,
+        "updated_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.organizations.update_one(
+        {"id": org["id"]},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Settings updated successfully"}
+
+
+class TestTicketingRequest(BaseModel):
+    url: str
+    api_key: str
+
+
+@api_router.post("/org/settings/test-ticketing")
+async def test_ticketing_connection(data: TestTicketingRequest, user: dict = Depends(get_current_org_user)):
+    """Test ticketing system connection"""
+    import httpx
+    
+    try:
+        # Try to connect to the ticketing system API
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Try a simple GET request to check if API is accessible
+            headers = {"X-API-Key": data.api_key}
+            response = await client.get(data.url, headers=headers)
+            
+            if response.status_code < 500:
+                return {"success": True, "message": "Connection successful"}
+            else:
+                return {"success": False, "message": f"Server error: {response.status_code}"}
+    except httpx.TimeoutException:
+        return {"success": False, "message": "Connection timeout - check URL"}
+    except httpx.RequestError as e:
+        return {"success": False, "message": f"Connection error: {str(e)}"}
+    except Exception as e:
+        return {"success": False, "message": f"Error: {str(e)}"}
+
+
+# ==================== ADMIN PLAN MANAGEMENT ENDPOINTS ====================
+
+@api_router.get("/admin/plans")
+async def get_all_plans(admin: dict = Depends(get_current_admin)):
+    """Get all plans (including inactive) for admin management"""
+    plans = await db.pricing_plans.find({}, {"_id": 0}).sort("sort_order", 1).to_list(20)
+    
+    if not plans:
+        # Return default plans if none exist in DB
+        plans = DEFAULT_PLANS
+        # Seed default plans into database
+        for plan in DEFAULT_PLANS:
+            await db.pricing_plans.update_one(
+                {"id": plan["id"]},
+                {"$setOnInsert": plan},
+                upsert=True
+            )
+    
+    return {"plans": plans}
+
+
+class PlanCreate(BaseModel):
+    id: str
+    name: str
+    display_name: str
+    description: Optional[str] = ""
+    price_monthly: int = 0
+    price_yearly: int = 0
+    razorpay_plan_id_monthly: Optional[str] = None
+    razorpay_plan_id_yearly: Optional[str] = None
+    features: dict = {}
+    is_active: bool = True
+    is_popular: bool = False
+    sort_order: int = 1
+
+
+@api_router.post("/admin/plans")
+async def create_plan(data: PlanCreate, admin: dict = Depends(get_current_admin)):
+    """Create a new pricing plan"""
+    # Check if plan ID already exists
+    existing = await db.pricing_plans.find_one({"id": data.id})
+    if existing:
+        raise HTTPException(status_code=400, detail="Plan ID already exists")
+    
+    plan_data = {
+        "id": data.id,
+        "name": data.name,
+        "display_name": data.display_name,
+        "description": data.description,
+        "price_monthly": data.price_monthly,
+        "price_yearly": data.price_yearly,
+        "razorpay_plan_id_monthly": data.razorpay_plan_id_monthly,
+        "razorpay_plan_id_yearly": data.razorpay_plan_id_yearly,
+        "features": data.features,
+        "is_active": data.is_active,
+        "is_popular": data.is_popular,
+        "sort_order": data.sort_order,
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.pricing_plans.insert_one(plan_data)
+    
+    await log_audit("plan", data.id, "create", {"plan": data.display_name}, admin)
+    
+    return {"message": "Plan created successfully", "id": data.id}
+
+
+@api_router.put("/admin/plans/{plan_id}")
+async def update_plan(plan_id: str, data: PlanCreate, admin: dict = Depends(get_current_admin)):
+    """Update an existing plan"""
+    existing = await db.pricing_plans.find_one({"id": plan_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    update_data = {
+        "name": data.name,
+        "display_name": data.display_name,
+        "description": data.description,
+        "price_monthly": data.price_monthly,
+        "price_yearly": data.price_yearly,
+        "razorpay_plan_id_monthly": data.razorpay_plan_id_monthly,
+        "razorpay_plan_id_yearly": data.razorpay_plan_id_yearly,
+        "features": data.features,
+        "is_active": data.is_active,
+        "is_popular": data.is_popular,
+        "sort_order": data.sort_order,
+        "updated_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.pricing_plans.update_one({"id": plan_id}, {"$set": update_data})
+    
+    await log_audit("plan", plan_id, "update", {"changes": "Plan updated"}, admin)
+    
+    return {"message": "Plan updated successfully"}
+
+
+@api_router.patch("/admin/plans/{plan_id}/toggle")
+async def toggle_plan_status(plan_id: str, admin: dict = Depends(get_current_admin)):
+    """Toggle plan active status"""
+    existing = await db.pricing_plans.find_one({"id": plan_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    new_status = not existing.get("is_active", True)
+    
+    await db.pricing_plans.update_one(
+        {"id": plan_id},
+        {"$set": {"is_active": new_status, "updated_at": datetime.utcnow().isoformat()}}
+    )
+    
+    await log_audit("plan", plan_id, "toggle", {"is_active": new_status}, admin)
+    
+    return {"message": f"Plan {'activated' if new_status else 'deactivated'}", "is_active": new_status}
+
+
 @api_router.get("/masters/public")
 async def get_public_masters(
     master_type: Optional[str] = None,
