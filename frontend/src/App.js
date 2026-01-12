@@ -97,6 +97,7 @@ function App() {
                     <Route path="service-history" element={<ServiceHistory />} />
                     <Route path="supply-products" element={<SupplyProducts />} />
                     <Route path="supply-orders" element={<SupplyOrders />} />
+                    <Route path="plans" element={<PlanManagement />} />
                     <Route path="master-data" element={<MasterData />} />
                     <Route path="settings" element={<Settings />} />
                   </Route>
