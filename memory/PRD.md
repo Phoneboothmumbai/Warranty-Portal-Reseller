@@ -11,9 +11,24 @@ Build an enterprise-grade Warranty & Asset Tracking Portal with:
 ## Current Status: SaaS Transformation IN PROGRESS
 - **Preview URL:** https://trackport-2.preview.emergentagent.com
 - **Admin Credentials:** admin@demo.com / admin123
-- **Test Org:** john@demotech.com / password123 (subdomain: demo-tech)
+- **Test Org 1:** john@demotech.com / password123 (subdomain: demo-tech)
+- **Test Org 2:** test@demoit.com / TestPassword123 (subdomain: demoit) - Has sample device data
 
 ## What's Been Implemented
+
+### Public Warranty Page on Tenant Subdomains (Jan 12, 2026) - COMPLETED
+- **Public Warranty Check Page:**
+  - Accessible at `/org/{slug}/warranty` (e.g., `/org/demoit/warranty`)
+  - Displays organization branding (name, logo)
+  - Serial number / Asset tag search functionality
+  - Detailed warranty results showing:
+    - Warranty status banner (Active/Expiring/Expired) with days remaining
+    - Device details (brand, model, serial, asset tag, dates, vendor, condition)
+    - Parts list with individual warranty status
+    - Service history with technician, type, status, and cost
+    - AMC Contract coverage information
+  - Error handling for non-existent orgs and devices
+  - 12/12 API tests passed, all UI tests passed
 
 ### SaaS Multi-Tenant Foundation (Jan 12, 2026) - COMPLETED
 - **Self-Serve Signup with Subdomain Selection:**
