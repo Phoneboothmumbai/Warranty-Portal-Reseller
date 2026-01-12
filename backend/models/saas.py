@@ -143,7 +143,7 @@ class Organization(BaseModel):
     """Organization (Tenant) - Top level entity"""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
-    slug: str  # Unique URL slug
+    slug: str  # Unique URL slug / subdomain
     
     # Owner/Admin
     owner_id: str  # References org_users
@@ -161,6 +161,11 @@ class Organization(BaseModel):
     industry: Optional[str] = None
     company_size: Optional[str] = None
     gst_number: Optional[str] = None
+    
+    # osTicket Integration (per-tenant)
+    osticket_url: Optional[str] = None  # e.g., https://support.company.com/api
+    osticket_api_key: Optional[str] = None
+    osticket_enabled: bool = False
     
     # Subscription
     plan_id: str = "plan_free"
