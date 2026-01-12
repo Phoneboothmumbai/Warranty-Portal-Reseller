@@ -13,6 +13,7 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 const navItems = [
   { path: '/org/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/org/admin/companies', label: 'Companies', icon: Building2 },
   { path: '/org/admin/sites', label: 'Sites', icon: MapPin },
   { path: '/org/admin/users', label: 'Users', icon: Users },
   { path: '/org/admin/devices', label: 'Devices', icon: Laptop },
