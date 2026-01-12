@@ -291,6 +291,19 @@ const OrgSites = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Company</label>
+                <select
+                  value={formData.company_id}
+                  onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+                >
+                  <option value="">No Company (Direct)</option>
+                  {companies.map(company => (
+                    <option key={company.id} value={company.id}>{company.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Site Name *</label>
                 <input
                   type="text"
