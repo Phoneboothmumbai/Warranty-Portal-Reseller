@@ -76,6 +76,10 @@ from models.supplies import (
     SupplyProduct, SupplyProductCreate, SupplyProductUpdate,
     SupplyOrderItem, SupplyOrderLocation, SupplyOrder
 )
+from models.saas import (
+    Organization, OrganizationCreate, OrgUser, OrgUserCreate,
+    PricingPlan, Subscription, Payment, DEFAULT_PLANS
+)
 
 # Create the main app
 app = FastAPI(title="Warranty & Asset Tracking Portal")
