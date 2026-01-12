@@ -24,6 +24,12 @@ import OrgUsers from "./pages/org/OrgUsers";
 import OrgDevices from "./pages/org/OrgDevices";
 import OrgParts from "./pages/org/OrgParts";
 import OrgServiceHistory from "./pages/org/OrgServiceHistory";
+import OrgLicenses from "./pages/org/OrgLicenses";
+import OrgAMCContracts from "./pages/org/OrgAMCContracts";
+import OrgDeployments from "./pages/org/OrgDeployments";
+import OrgSupplyProducts from "./pages/org/OrgSupplyProducts";
+import OrgSupplyOrders from "./pages/org/OrgSupplyOrders";
+import OrgBilling from "./pages/org/OrgBilling";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
