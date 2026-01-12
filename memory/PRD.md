@@ -352,22 +352,35 @@ Foundation built for service engineers to manage assigned tickets and field visi
 - Admin ticket assignment UI
 
 ## Upcoming Tasks (Priority Order)
-1. **P1: Complete Engineer Field Visit Workflow**
+1. **P0: Complete SaaS Onboarding & Tenant Isolation**
+   - Refactor ALL database queries to filter by `organization_id`
+   - This is CRITICAL for data security between tenants
+   - Build Organization Billing page for plan upgrades
+
+2. **P0: Integrate Razorpay Checkout**
+   - Create checkout flow when user selects a paid plan
+   - Implement webhook endpoint `/api/saas/razorpay-webhook`
+   - Handle payment success/failure events
+   - Update subscription status on payment confirmation
+   - (User will provide Razorpay API keys)
+
+3. **P1: Implement Feature Gating**
+   - Restrict AI Support Bot to Pro+ plans
+   - Limit device/user counts based on plan
+   - Add usage checks before creating new devices/users
+
+4. **P1: Complete Engineer Field Visit Workflow**
    - Check-in/out forms, action logs, parts tracking, photo uploads
    - Admin UI to assign tickets to engineers
 
-2. **P1: Admin & User Role Management**
-   - Role-based access control (Super Admin, Admin, Staff, Service Engineer)
+5. **P1: Admin & User Role Management**
+   - Role-based access control (Super Admin, Org Admin, Staff, Service Engineer)
    - Permission system for different user types
 
-3. **P2: Email Notifications**
-   - Ticket status updates
-   - Warranty expiry alerts
-   - Order confirmations
-
 ## Future/Backlog
-- WhatsApp Integration (user deferred)
-- PDF Export for Service History
-- Warranty Expiry Dashboard (calendar view)
-- Backend route refactoring (move routes from server.py to routes/ directory)
-- Fix eslint/lint warnings
+- **P2:** Email Notifications (ticket updates, warranty expiry alerts)
+- **P2:** WhatsApp Integration (user deferred)
+- **P2:** PDF Export for Service History
+- **P2:** Warranty Expiry Dashboard (calendar view)
+- **P3:** Backend route refactoring (move routes from server.py to routes/ directory)
+- **P3:** Fix eslint/lint warnings
