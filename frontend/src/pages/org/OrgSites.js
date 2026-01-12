@@ -92,7 +92,7 @@ const OrgSites = () => {
         });
         toast.success('Site created');
       }
-      fetchSites();
+      fetchData();
       closeModal();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Operation failed');
@@ -107,7 +107,7 @@ const OrgSites = () => {
         headers: getAuthHeaders()
       });
       toast.success('Site deleted');
-      fetchSites();
+      fetchData();
     } catch (error) {
       toast.error('Failed to delete site');
     }
@@ -117,6 +117,7 @@ const OrgSites = () => {
     setEditingSite(null);
     setFormData({
       name: '',
+      company_id: filterCompany || '',
       site_type: 'office',
       address: '',
       city: '',
@@ -134,6 +135,7 @@ const OrgSites = () => {
     setEditingSite(site);
     setFormData({
       name: site.name || '',
+      company_id: site.company_id || '',
       site_type: site.site_type || 'office',
       address: site.address || '',
       city: site.city || '',
