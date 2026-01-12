@@ -25,6 +25,7 @@ from reportlab.lib.units import inch
 import shutil
 import json
 import qrcode
+import jwt
 from pydantic import BaseModel
 
 # Import from modular structure
