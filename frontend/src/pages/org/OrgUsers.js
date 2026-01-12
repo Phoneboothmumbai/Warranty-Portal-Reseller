@@ -91,7 +91,7 @@ const OrgUsers = () => {
         });
         toast.success('User created');
       }
-      fetchUsers();
+      fetchData();
       closeModal();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Operation failed');
@@ -110,7 +110,7 @@ const OrgUsers = () => {
         headers: getAuthHeaders()
       });
       toast.success('User deleted');
-      fetchUsers();
+      fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to delete user');
     }
@@ -121,6 +121,7 @@ const OrgUsers = () => {
     setFormData({
       name: '',
       email: '',
+      company_id: filterCompany || '',
       phone: '',
       role: 'staff',
       password: ''
@@ -133,6 +134,7 @@ const OrgUsers = () => {
     setFormData({
       name: user.name || '',
       email: user.email || '',
+      company_id: user.company_id || '',
       phone: user.phone || '',
       role: user.role || 'staff',
       password: ''
