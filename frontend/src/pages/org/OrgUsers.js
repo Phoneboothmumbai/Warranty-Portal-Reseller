@@ -247,6 +247,12 @@ const OrgUsers = () => {
                       <div>
                         <p className="font-medium text-slate-900">{user.name}</p>
                         <p className="text-sm text-slate-500">{user.email}</p>
+                        {user.company_id && (
+                          <p className="text-xs text-blue-600 flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />
+                            {getCompanyName(user.company_id)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </td>
