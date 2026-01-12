@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import axios from 'axios';
 import { 
   Plus, Search, Edit2, Trash2, Users as UsersIcon, MoreVertical,
-  Mail, Phone, Shield, UserCheck
+  Mail, Phone, Shield, UserCheck, Building2
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -22,14 +22,17 @@ const ROLES = [
 const OrgUsers = () => {
   const { orgData, user: currentUser } = useOutletContext();
   const [users, setUsers] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterCompany, setFilterCompany] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    company_id: '',
     phone: '',
     role: 'staff',
     password: ''
@@ -41,20 +44,28 @@ const OrgUsers = () => {
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchData();
+  }, [filterCompany]);
 
-  const fetchUsers = async () => {
+  const fetchData = async () => {
     try {
-      const response = await axios.get(`${API}/api/org/users`, {
-        headers: getAuthHeaders()
-      });
-      setUsers(response.data);
+      const params = filterCompany ? { company_id: filterCompany } : {};
+      const [usersRes, companiesRes] = await Promise.all([
+        axios.get(`${API}/api/org/users`, { params, headers: getAuthHeaders() }),
+        axios.get(`${API}/api/org/companies`, { headers: getAuthHeaders() })
+      ]);
+      setUsers(usersRes.data || []);
+      setCompanies(companiesRes.data || []);
     } catch (error) {
-      toast.error('Failed to fetch users');
+      toast.error('Failed to fetch data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCompanyName = (companyId) => {
+    const company = companies.find(c => c.id === companyId);
+    return company?.name || '-';
   };
 
   const handleSubmit = async (e) => {
