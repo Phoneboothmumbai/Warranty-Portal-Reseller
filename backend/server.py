@@ -122,8 +122,53 @@ async def get_pricing_plans():
     return {"plans": plans}
 
 
+# Reserved subdomains that cannot be used
+RESERVED_SUBDOMAINS = [
+    'www', 'app', 'api', 'admin', 'dashboard', 'portal', 'help', 'support',
+    'mail', 'email', 'ftp', 'ssh', 'blog', 'shop', 'store', 'test', 'staging',
+    'dev', 'demo', 'status', 'docs', 'cdn', 'assets', 'static', 'media'
+]
+
+
+@api_router.get("/check-subdomain/{subdomain}")
+async def check_subdomain_availability(subdomain: str):
+    """Check if a subdomain is available for registration"""
+    import re
+    
+    # Clean and validate subdomain format
+    subdomain = subdomain.lower().strip()
+    
+    # Validate format: only lowercase letters, numbers, hyphens
+    if not re.match(r'^[a-z][a-z0-9-]{2,30}[a-z0-9]$', subdomain):
+        return {
+            "available": False,
+            "reason": "Subdomain must be 4-32 characters, start with a letter, and contain only letters, numbers, and hyphens"
+        }
+    
+    # Check reserved names
+    if subdomain in RESERVED_SUBDOMAINS:
+        return {
+            "available": False,
+            "reason": "This subdomain is reserved"
+        }
+    
+    # Check if already taken
+    existing = await db.organizations.find_one({"slug": subdomain})
+    if existing:
+        return {
+            "available": False,
+            "reason": "This subdomain is already taken"
+        }
+    
+    return {
+        "available": True,
+        "subdomain": subdomain
+    }
+
+
 class SignupRequest(BaseModel):
     organization_name: str
+    subdomain: str  # User-chosen subdomain
     owner_name: str
     owner_email: str
     owner_password: str
@@ -139,6 +184,19 @@ async def signup_organization(data: SignupRequest):
     Starts with free plan + 14-day trial of Pro features.
     """
     from services.saas_service import create_organization
+    import re
+    
+    # Validate subdomain
+    subdomain = data.subdomain.lower().strip()
+    if not re.match(r'^[a-z][a-z0-9-]{2,30}[a-z0-9]$', subdomain):
+        raise HTTPException(status_code=400, detail="Invalid subdomain format")
+    
+    if subdomain in RESERVED_SUBDOMAINS:
+        raise HTTPException(status_code=400, detail="This subdomain is reserved")
+    
+    existing = await db.organizations.find_one({"slug": subdomain})
+    if existing:
+        raise HTTPException(status_code=400, detail="This subdomain is already taken")
     
     # Validate password
     if len(data.owner_password) < 8:
@@ -147,6 +205,7 @@ async def signup_organization(data: SignupRequest):
     result = await create_organization(
         db=db,
         name=data.organization_name,
+        slug=subdomain,  # Use user-chosen subdomain
         owner_name=data.owner_name,
         owner_email=data.owner_email,
         owner_password=data.owner_password,
