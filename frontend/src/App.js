@@ -80,6 +80,26 @@ function App() {
                   <Route path="/org/dashboard" element={<OrgDashboard />} />
                   <Route path="/org/settings" element={<OrgSettings />} />
                   
+                  {/* Org Admin Portal Routes */}
+                  <Route path="/org/admin" element={<OrgAdminLayout />}>
+                    <Route index element={<Navigate to="/org/admin/dashboard" replace />} />
+                    <Route path="dashboard" element={<OrgAdminDashboard />} />
+                    {/* Placeholder routes - will be implemented */}
+                    <Route path="sites" element={<PlaceholderPage title="Sites" />} />
+                    <Route path="users" element={<PlaceholderPage title="Users" />} />
+                    <Route path="devices" element={<PlaceholderPage title="Devices" />} />
+                    <Route path="deployments" element={<PlaceholderPage title="Deployments" />} />
+                    <Route path="parts" element={<PlaceholderPage title="Parts" />} />
+                    <Route path="licenses" element={<PlaceholderPage title="Licenses" />} />
+                    <Route path="service-history" element={<PlaceholderPage title="Service History" />} />
+                    <Route path="amc-contracts" element={<PlaceholderPage title="AMC Contracts" />} />
+                    <Route path="supply-products" element={<PlaceholderPage title="Office Supplies - Products" />} />
+                    <Route path="supply-orders" element={<PlaceholderPage title="Office Supplies - Orders" />} />
+                    <Route path="integrations" element={<OrgSettings />} />
+                    <Route path="billing" element={<PlaceholderPage title="Billing & Subscription" />} />
+                    <Route path="settings" element={<PlaceholderPage title="Settings" />} />
+                  </Route>
+                  
                   {/* Admin Routes */}
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/admin/setup" element={<AdminSetup />} />
