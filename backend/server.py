@@ -708,6 +708,131 @@ async def get_org_devices(
     return {"devices": devices, "total": total}
 
 
+# ==================== ORG COMPANIES (CLIENTS) ENDPOINTS ====================
+
+@api_router.get("/org/companies")
+async def get_org_companies(user: dict = Depends(get_current_org_user), search: Optional[str] = None):
+    """Get all companies (clients) for this organization"""
+    org_id = user["organization"]["id"]
+    query = {"organization_id": org_id}
+    
+    if search:
+        search_regex = {"$regex": search.strip(), "$options": "i"}
+        query["$or"] = [
+            {"name": search_regex},
+            {"contact_name": search_regex},
+            {"contact_email": search_regex}
+        ]
+    
+    companies = await db.org_companies.find(query, {"_id": 0}).sort("name", 1).to_list(500)
+    return companies
+
+
+class OrgCompanyCreate(BaseModel):
+    name: str
+    company_code: Optional[str] = ""
+    industry: Optional[str] = ""
+    gst_number: Optional[str] = ""
+    address: Optional[str] = ""
+    city: Optional[str] = ""
+    state: Optional[str] = ""
+    pincode: Optional[str] = ""
+    contact_name: str
+    contact_email: str
+    contact_phone: str
+    amc_status: str = "not_applicable"
+    notes: Optional[str] = ""
+
+
+@api_router.post("/org/companies")
+async def create_org_company(data: OrgCompanyCreate, user: dict = Depends(get_current_org_user)):
+    """Create a new company (client) for this organization"""
+    org_id = user["organization"]["id"]
+    
+    company = {
+        "id": str(uuid.uuid4()),
+        "organization_id": org_id,
+        "name": data.name,
+        "company_code": data.company_code,
+        "industry": data.industry,
+        "gst_number": data.gst_number,
+        "address": data.address,
+        "city": data.city,
+        "state": data.state,
+        "pincode": data.pincode,
+        "contact_name": data.contact_name,
+        "contact_email": data.contact_email,
+        "contact_phone": data.contact_phone,
+        "amc_status": data.amc_status,
+        "notes": data.notes,
+        "created_at": datetime.utcnow().isoformat(),
+        "created_by": user["user"]["id"]
+    }
+    
+    await db.org_companies.insert_one(company)
+    return {"message": "Company created", "id": company["id"]}
+
+
+@api_router.get("/org/companies/{company_id}")
+async def get_org_company(company_id: str, user: dict = Depends(get_current_org_user)):
+    """Get a single company by ID"""
+    org_id = user["organization"]["id"]
+    
+    company = await db.org_companies.find_one({"id": company_id, "organization_id": org_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Get counts
+    sites_count = await db.sites.count_documents({"company_id": company_id, "organization_id": org_id})
+    users_count = await db.org_users.count_documents({"company_id": company_id, "organization_id": org_id})
+    devices_count = await db.devices.count_documents({"company_id": company_id, "organization_id": org_id})
+    
+    company["sites_count"] = sites_count
+    company["users_count"] = users_count
+    company["devices_count"] = devices_count
+    
+    return company
+
+
+@api_router.put("/org/companies/{company_id}")
+async def update_org_company(company_id: str, data: OrgCompanyCreate, user: dict = Depends(get_current_org_user)):
+    """Update a company"""
+    org_id = user["organization"]["id"]
+    
+    existing = await db.org_companies.find_one({"id": company_id, "organization_id": org_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    update_data = data.model_dump()
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    
+    await db.org_companies.update_one({"id": company_id}, {"$set": update_data})
+    return {"message": "Company updated"}
+
+
+@api_router.delete("/org/companies/{company_id}")
+async def delete_org_company(company_id: str, user: dict = Depends(get_current_org_user)):
+    """Delete a company and optionally its related data"""
+    org_id = user["organization"]["id"]
+    
+    existing = await db.org_companies.find_one({"id": company_id, "organization_id": org_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Delete related data
+    await db.sites.delete_many({"company_id": company_id, "organization_id": org_id})
+    await db.org_users.delete_many({"company_id": company_id, "organization_id": org_id})
+    await db.devices.update_many(
+        {"company_id": company_id, "organization_id": org_id},
+        {"$set": {"company_id": None}}
+    )
+    
+    # Delete company
+    await db.org_companies.delete_one({"id": company_id})
+    
+    return {"message": "Company deleted"}
+
+
 # ==================== ORG SITES ENDPOINTS ====================
 
 @api_router.get("/org/sites")
