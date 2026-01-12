@@ -25,6 +25,7 @@ const navItems = [
   { path: '/admin/supply-products', label: 'Products', icon: ShoppingBag },
   { path: '/admin/supply-orders', label: 'Orders', icon: ClipboardList },
   { type: 'divider', label: 'Settings' },
+  { path: '/admin/plans', label: 'Plan Management', icon: CreditCard },
   { path: '/admin/master-data', label: 'Master Data', icon: Database },
   { path: '/admin/settings', label: 'Settings', icon: Settings },
 ];
