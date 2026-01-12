@@ -708,6 +708,454 @@ async def get_org_devices(
     return {"devices": devices, "total": total}
 
 
+# ==================== ORG SITES ENDPOINTS ====================
+
+@api_router.get("/org/sites")
+async def get_org_sites(user: dict = Depends(get_current_org_user), search: Optional[str] = None):
+    """Get all sites for this organization"""
+    org_id = user["organization"]["id"]
+    query = {"organization_id": org_id}
+    
+    if search:
+        search_regex = {"$regex": search.strip(), "$options": "i"}
+        query["$or"] = [
+            {"name": search_regex},
+            {"city": search_regex},
+            {"address": search_regex}
+        ]
+    
+    sites = await db.sites.find(query, {"_id": 0}).sort("name", 1).to_list(500)
+    return sites
+
+
+class OrgSiteCreate(BaseModel):
+    name: str
+    site_type: str = "office"
+    address: Optional[str] = ""
+    city: Optional[str] = ""
+    state: Optional[str] = ""
+    pincode: Optional[str] = ""
+    primary_contact_name: Optional[str] = ""
+    contact_number: Optional[str] = ""
+    contact_email: Optional[str] = ""
+    notes: Optional[str] = ""
+
+
+@api_router.post("/org/sites")
+async def create_org_site(data: OrgSiteCreate, user: dict = Depends(get_current_org_user)):
+    """Create a new site for this organization"""
+    org_id = user["organization"]["id"]
+    
+    site = {
+        "id": str(uuid.uuid4()),
+        "organization_id": org_id,
+        "name": data.name,
+        "site_type": data.site_type,
+        "address": data.address,
+        "city": data.city,
+        "state": data.state,
+        "pincode": data.pincode,
+        "primary_contact_name": data.primary_contact_name,
+        "contact_number": data.contact_number,
+        "contact_email": data.contact_email,
+        "notes": data.notes,
+        "created_at": datetime.utcnow().isoformat(),
+        "created_by": user["user"]["id"]
+    }
+    
+    await db.sites.insert_one(site)
+    return {"message": "Site created", "id": site["id"]}
+
+
+@api_router.put("/org/sites/{site_id}")
+async def update_org_site(site_id: str, data: OrgSiteCreate, user: dict = Depends(get_current_org_user)):
+    """Update a site"""
+    org_id = user["organization"]["id"]
+    
+    existing = await db.sites.find_one({"id": site_id, "organization_id": org_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Site not found")
+    
+    update_data = data.model_dump()
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    
+    await db.sites.update_one({"id": site_id}, {"$set": update_data})
+    return {"message": "Site updated"}
+
+
+@api_router.delete("/org/sites/{site_id}")
+async def delete_org_site(site_id: str, user: dict = Depends(get_current_org_user)):
+    """Delete a site"""
+    org_id = user["organization"]["id"]
+    
+    result = await db.sites.delete_one({"id": site_id, "organization_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Site not found")
+    
+    return {"message": "Site deleted"}
+
+
+# ==================== ORG USERS ENDPOINTS ====================
+
+@api_router.get("/org/users")
+async def get_org_users(user: dict = Depends(get_current_org_user), search: Optional[str] = None):
+    """Get all users for this organization"""
+    org_id = user["organization"]["id"]
+    query = {"organization_id": org_id}
+    
+    if search:
+        search_regex = {"$regex": search.strip(), "$options": "i"}
+        query["$or"] = [
+            {"name": search_regex},
+            {"email": search_regex},
+            {"phone": search_regex}
+        ]
+    
+    users = await db.org_users.find(query, {"_id": 0, "password_hash": 0}).sort("name", 1).to_list(500)
+    return users
+
+
+class OrgUserCreate(BaseModel):
+    name: str
+    email: str
+    phone: Optional[str] = ""
+    role: str = "staff"
+    password: Optional[str] = None
+
+
+@api_router.post("/org/users")
+async def create_org_user(data: OrgUserCreate, user: dict = Depends(get_current_org_user)):
+    """Create a new user for this organization"""
+    org_id = user["organization"]["id"]
+    
+    # Check if email already exists
+    existing = await db.org_users.find_one({"email": data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    
+    new_user = {
+        "id": str(uuid.uuid4()),
+        "organization_id": org_id,
+        "name": data.name,
+        "email": data.email,
+        "phone": data.phone,
+        "role": data.role,
+        "password_hash": pwd_context.hash(data.password) if data.password else pwd_context.hash("changeme123"),
+        "status": "active",
+        "created_at": datetime.utcnow().isoformat(),
+        "created_by": user["user"]["id"]
+    }
+    
+    await db.org_users.insert_one(new_user)
+    return {"message": "User created", "id": new_user["id"]}
+
+
+@api_router.put("/org/users/{user_id}")
+async def update_org_user(user_id: str, data: OrgUserCreate, user: dict = Depends(get_current_org_user)):
+    """Update a user"""
+    org_id = user["organization"]["id"]
+    
+    existing = await db.org_users.find_one({"id": user_id, "organization_id": org_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    update_data = {
+        "name": data.name,
+        "email": data.email,
+        "phone": data.phone,
+        "role": data.role,
+        "updated_at": datetime.utcnow().isoformat()
+    }
+    
+    if data.password:
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        update_data["password_hash"] = pwd_context.hash(data.password)
+    
+    await db.org_users.update_one({"id": user_id}, {"$set": update_data})
+    return {"message": "User updated"}
+
+
+@api_router.delete("/org/users/{user_id}")
+async def delete_org_user(user_id: str, user: dict = Depends(get_current_org_user)):
+    """Delete a user"""
+    org_id = user["organization"]["id"]
+    
+    # Prevent deleting yourself
+    if user_id == user["user"]["id"]:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    
+    result = await db.org_users.delete_one({"id": user_id, "organization_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": "User deleted"}
+
+
+# ==================== ORG DEVICES CRUD ENDPOINTS ====================
+
+class OrgDeviceCreate(BaseModel):
+    device_type: Optional[str] = ""
+    brand: str
+    model: str
+    serial_number: str
+    asset_tag: Optional[str] = ""
+    purchase_date: Optional[str] = ""
+    warranty_end_date: Optional[str] = ""
+    vendor: Optional[str] = ""
+    location: Optional[str] = ""
+    site_id: Optional[str] = ""
+    assigned_user_id: Optional[str] = ""
+    condition: str = "good"
+    status: str = "active"
+    notes: Optional[str] = ""
+    consumables: Optional[list] = []
+
+
+@api_router.post("/org/devices")
+async def create_org_device(data: OrgDeviceCreate, user: dict = Depends(get_current_org_user)):
+    """Create a new device for this organization"""
+    org_id = user["organization"]["id"]
+    
+    # Check if serial number already exists
+    existing = await db.devices.find_one({"serial_number": data.serial_number, "organization_id": org_id})
+    if existing:
+        raise HTTPException(status_code=400, detail="Serial number already exists")
+    
+    device = {
+        "id": str(uuid.uuid4()),
+        "organization_id": org_id,
+        "device_type": data.device_type,
+        "brand": data.brand,
+        "model": data.model,
+        "serial_number": data.serial_number,
+        "asset_tag": data.asset_tag,
+        "purchase_date": data.purchase_date,
+        "warranty_end": data.warranty_end_date,
+        "vendor": data.vendor,
+        "location": data.location,
+        "site_id": data.site_id,
+        "assigned_user_id": data.assigned_user_id,
+        "condition": data.condition,
+        "status": data.status,
+        "notes": data.notes,
+        "consumables": data.consumables,
+        "created_at": datetime.utcnow().isoformat(),
+        "created_by": user["user"]["id"]
+    }
+    
+    await db.devices.insert_one(device)
+    return {"message": "Device created", "id": device["id"]}
+
+
+@api_router.get("/org/devices/{device_id}")
+async def get_org_device(device_id: str, user: dict = Depends(get_current_org_user)):
+    """Get a single device by ID"""
+    org_id = user["organization"]["id"]
+    
+    device = await db.devices.find_one({"id": device_id, "organization_id": org_id}, {"_id": 0})
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    return device
+
+
+@api_router.put("/org/devices/{device_id}")
+async def update_org_device(device_id: str, data: OrgDeviceCreate, user: dict = Depends(get_current_org_user)):
+    """Update a device"""
+    org_id = user["organization"]["id"]
+    
+    existing = await db.devices.find_one({"id": device_id, "organization_id": org_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    update_data = {
+        "device_type": data.device_type,
+        "brand": data.brand,
+        "model": data.model,
+        "serial_number": data.serial_number,
+        "asset_tag": data.asset_tag,
+        "purchase_date": data.purchase_date,
+        "warranty_end": data.warranty_end_date,
+        "vendor": data.vendor,
+        "location": data.location,
+        "site_id": data.site_id,
+        "assigned_user_id": data.assigned_user_id,
+        "condition": data.condition,
+        "status": data.status,
+        "notes": data.notes,
+        "consumables": data.consumables,
+        "updated_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.devices.update_one({"id": device_id}, {"$set": update_data})
+    return {"message": "Device updated"}
+
+
+@api_router.delete("/org/devices/{device_id}")
+async def delete_org_device(device_id: str, user: dict = Depends(get_current_org_user)):
+    """Delete a device"""
+    org_id = user["organization"]["id"]
+    
+    result = await db.devices.delete_one({"id": device_id, "organization_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    return {"message": "Device deleted"}
+
+
+# ==================== ORG PARTS ENDPOINTS ====================
+
+@api_router.get("/org/parts")
+async def get_org_parts(user: dict = Depends(get_current_org_user), search: Optional[str] = None):
+    """Get all parts for this organization"""
+    org_id = user["organization"]["id"]
+    query = {"organization_id": org_id}
+    
+    if search:
+        search_regex = {"$regex": search.strip(), "$options": "i"}
+        query["$or"] = [
+            {"part_name": search_regex},
+            {"part_number": search_regex},
+            {"brand": search_regex}
+        ]
+    
+    parts = await db.parts.find(query, {"_id": 0}).sort("part_name", 1).to_list(500)
+    return parts
+
+
+class OrgPartCreate(BaseModel):
+    device_id: Optional[str] = ""
+    part_name: str
+    part_number: Optional[str] = ""
+    serial_number: Optional[str] = ""
+    brand: Optional[str] = ""
+    warranty_end: Optional[str] = ""
+    status: str = "installed"
+    notes: Optional[str] = ""
+
+
+@api_router.post("/org/parts")
+async def create_org_part(data: OrgPartCreate, user: dict = Depends(get_current_org_user)):
+    """Create a new part"""
+    org_id = user["organization"]["id"]
+    
+    part = {
+        "id": str(uuid.uuid4()),
+        "organization_id": org_id,
+        "device_id": data.device_id,
+        "part_name": data.part_name,
+        "part_number": data.part_number,
+        "serial_number": data.serial_number,
+        "brand": data.brand,
+        "warranty_end": data.warranty_end,
+        "status": data.status,
+        "notes": data.notes,
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.parts.insert_one(part)
+    return {"message": "Part created", "id": part["id"]}
+
+
+@api_router.put("/org/parts/{part_id}")
+async def update_org_part(part_id: str, data: OrgPartCreate, user: dict = Depends(get_current_org_user)):
+    """Update a part"""
+    org_id = user["organization"]["id"]
+    
+    existing = await db.parts.find_one({"id": part_id, "organization_id": org_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Part not found")
+    
+    update_data = data.model_dump()
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    
+    await db.parts.update_one({"id": part_id}, {"$set": update_data})
+    return {"message": "Part updated"}
+
+
+@api_router.delete("/org/parts/{part_id}")
+async def delete_org_part(part_id: str, user: dict = Depends(get_current_org_user)):
+    """Delete a part"""
+    org_id = user["organization"]["id"]
+    
+    result = await db.parts.delete_one({"id": part_id, "organization_id": org_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Part not found")
+    
+    return {"message": "Part deleted"}
+
+
+# ==================== ORG SERVICE HISTORY ENDPOINTS ====================
+
+@api_router.get("/org/service-history")
+async def get_org_service_history(user: dict = Depends(get_current_org_user), device_id: Optional[str] = None):
+    """Get service history for this organization"""
+    org_id = user["organization"]["id"]
+    query = {"organization_id": org_id}
+    
+    if device_id:
+        query["device_id"] = device_id
+    
+    history = await db.service_history.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return history
+
+
+class OrgServiceCreate(BaseModel):
+    device_id: str
+    service_type: str = "repair"
+    description: str
+    technician: Optional[str] = ""
+    cost: Optional[float] = 0
+    status: str = "completed"
+    notes: Optional[str] = ""
+
+
+@api_router.post("/org/service-history")
+async def create_org_service_entry(data: OrgServiceCreate, user: dict = Depends(get_current_org_user)):
+    """Create a service history entry"""
+    org_id = user["organization"]["id"]
+    
+    entry = {
+        "id": str(uuid.uuid4()),
+        "organization_id": org_id,
+        "device_id": data.device_id,
+        "service_type": data.service_type,
+        "description": data.description,
+        "technician": data.technician,
+        "cost": data.cost,
+        "status": data.status,
+        "notes": data.notes,
+        "created_at": datetime.utcnow().isoformat(),
+        "created_by": user["user"]["id"]
+    }
+    
+    await db.service_history.insert_one(entry)
+    return {"message": "Service entry created", "id": entry["id"]}
+
+
+# ==================== ORG MASTER DATA ====================
+
+@api_router.get("/org/masters")
+async def get_org_masters(user: dict = Depends(get_current_org_user)):
+    """Get master data for dropdowns"""
+    # Fetch from global masters collection
+    device_types = await db.masters.find({"type": "device_type"}, {"_id": 0}).to_list(100)
+    brands = await db.masters.find({"type": "brand"}, {"_id": 0}).to_list(100)
+    conditions = await db.masters.find({"type": "condition"}, {"_id": 0}).to_list(100)
+    statuses = await db.masters.find({"type": "asset_status"}, {"_id": 0}).to_list(100)
+    
+    return {
+        "device_types": [d.get("value", "") for d in device_types],
+        "brands": [b.get("value", "") for b in brands],
+        "conditions": [c.get("value", "") for c in conditions],
+        "statuses": [s.get("value", "") for s in statuses]
+    }
+
+
 # ==================== ORG SETTINGS ENDPOINTS ====================
 
 class OrgSettingsUpdate(BaseModel):
