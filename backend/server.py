@@ -836,10 +836,13 @@ async def delete_org_company(company_id: str, user: dict = Depends(get_current_o
 # ==================== ORG SITES ENDPOINTS ====================
 
 @api_router.get("/org/sites")
-async def get_org_sites(user: dict = Depends(get_current_org_user), search: Optional[str] = None):
+async def get_org_sites(user: dict = Depends(get_current_org_user), search: Optional[str] = None, company_id: Optional[str] = None):
     """Get all sites for this organization"""
     org_id = user["organization"]["id"]
     query = {"organization_id": org_id}
+    
+    if company_id:
+        query["company_id"] = company_id
     
     if search:
         search_regex = {"$regex": search.strip(), "$options": "i"}
@@ -855,6 +858,7 @@ async def get_org_sites(user: dict = Depends(get_current_org_user), search: Opti
 
 class OrgSiteCreate(BaseModel):
     name: str
+    company_id: Optional[str] = ""
     site_type: str = "office"
     address: Optional[str] = ""
     city: Optional[str] = ""
@@ -874,6 +878,7 @@ async def create_org_site(data: OrgSiteCreate, user: dict = Depends(get_current_
     site = {
         "id": str(uuid.uuid4()),
         "organization_id": org_id,
+        "company_id": data.company_id,
         "name": data.name,
         "site_type": data.site_type,
         "address": data.address,
