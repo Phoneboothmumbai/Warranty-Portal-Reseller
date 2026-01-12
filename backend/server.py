@@ -928,10 +928,13 @@ async def delete_org_site(site_id: str, user: dict = Depends(get_current_org_use
 # ==================== ORG USERS ENDPOINTS ====================
 
 @api_router.get("/org/users")
-async def get_org_users(user: dict = Depends(get_current_org_user), search: Optional[str] = None):
+async def get_org_users(user: dict = Depends(get_current_org_user), search: Optional[str] = None, company_id: Optional[str] = None):
     """Get all users for this organization"""
     org_id = user["organization"]["id"]
     query = {"organization_id": org_id}
+    
+    if company_id:
+        query["company_id"] = company_id
     
     if search:
         search_regex = {"$regex": search.strip(), "$options": "i"}
@@ -948,6 +951,7 @@ async def get_org_users(user: dict = Depends(get_current_org_user), search: Opti
 class OrgUserCreate(BaseModel):
     name: str
     email: str
+    company_id: Optional[str] = ""
     phone: Optional[str] = ""
     role: str = "staff"
     password: Optional[str] = None
