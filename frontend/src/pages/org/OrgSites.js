@@ -232,6 +232,12 @@ const OrgSites = () => {
                   <div>
                     <h3 className="font-semibold text-slate-900">{site.name}</h3>
                     <span className="text-xs text-slate-500 capitalize">{site.site_type?.replace('_', ' ')}</span>
+                    {site.company_id && (
+                      <p className="text-xs text-blue-600 flex items-center gap-1 mt-0.5">
+                        <Building2 className="h-3 w-3" />
+                        {getCompanyName(site.company_id)}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <DropdownMenu>
