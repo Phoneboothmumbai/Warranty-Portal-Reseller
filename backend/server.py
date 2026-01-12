@@ -535,6 +535,179 @@ async def razorpay_webhook(request: Request):
     return {"status": "ok"}
 
 
+# ==================== ORG DASHBOARD ENDPOINTS ====================
+
+@api_router.get("/org/dashboard")
+async def get_org_dashboard(user: dict = Depends(get_current_org_user)):
+    """Get dashboard statistics for organization"""
+    org = user["organization"]
+    org_id = org["id"]
+    
+    # Get counts for this org
+    sites_count = await db.sites.count_documents({"organization_id": org_id})
+    users_count = await db.org_users.count_documents({"organization_id": org_id})
+    devices_count = await db.devices.count_documents({"organization_id": org_id})
+    parts_count = await db.parts.count_documents({"organization_id": org_id})
+    
+    # Get warranty stats
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    
+    # Active warranties (warranty_end > today)
+    active_warranties = await db.devices.count_documents({
+        "organization_id": org_id,
+        "warranty_end": {"$gt": today}
+    })
+    
+    # Expired warranties (warranty_end <= today)
+    expired_warranties = await db.devices.count_documents({
+        "organization_id": org_id,
+        "warranty_end": {"$lte": today, "$ne": None, "$ne": ""}
+    })
+    
+    # Active AMC
+    active_amc = await db.amc_device_assignments.count_documents({
+        "organization_id": org_id,
+        "end_date": {"$gt": today}
+    })
+    
+    return {
+        "sites_count": sites_count,
+        "users_count": users_count,
+        "devices_count": devices_count,
+        "parts_count": parts_count,
+        "active_warranties": active_warranties,
+        "expired_warranties": expired_warranties,
+        "active_amc": active_amc
+    }
+
+
+@api_router.get("/org/dashboard/alerts")
+async def get_org_dashboard_alerts(user: dict = Depends(get_current_org_user)):
+    """Get expiring warranties and AMC alerts for organization"""
+    org = user["organization"]
+    org_id = org["id"]
+    
+    today = datetime.utcnow()
+    today_str = today.strftime("%Y-%m-%d")
+    
+    # Calculate date ranges
+    seven_days = (today + timedelta(days=7)).strftime("%Y-%m-%d")
+    fifteen_days = (today + timedelta(days=15)).strftime("%Y-%m-%d")
+    
+    # Warranty expiring in 7 days
+    warranty_7_days = await db.devices.find({
+        "organization_id": org_id,
+        "warranty_end": {"$gt": today_str, "$lte": seven_days}
+    }, {"_id": 0, "brand": 1, "model": 1, "warranty_end": 1}).to_list(10)
+    
+    for device in warranty_7_days:
+        if device.get("warranty_end"):
+            end_date = datetime.strptime(device["warranty_end"], "%Y-%m-%d")
+            device["days_remaining"] = (end_date - today).days
+    
+    # Warranty expiring in 8-15 days
+    warranty_15_days = await db.devices.find({
+        "organization_id": org_id,
+        "warranty_end": {"$gt": seven_days, "$lte": fifteen_days}
+    }, {"_id": 0, "brand": 1, "model": 1, "warranty_end": 1}).to_list(10)
+    
+    for device in warranty_15_days:
+        if device.get("warranty_end"):
+            end_date = datetime.strptime(device["warranty_end"], "%Y-%m-%d")
+            device["days_remaining"] = (end_date - today).days
+    
+    # AMC expiring in 7 days
+    amc_7_days_cursor = db.amc_device_assignments.aggregate([
+        {"$match": {
+            "organization_id": org_id,
+            "end_date": {"$gt": today_str, "$lte": seven_days}
+        }},
+        {"$lookup": {
+            "from": "devices",
+            "localField": "device_id",
+            "foreignField": "id",
+            "as": "device"
+        }},
+        {"$unwind": {"path": "$device", "preserveNullAndEmptyArrays": True}},
+        {"$project": {
+            "_id": 0,
+            "brand": "$device.brand",
+            "model": "$device.model",
+            "end_date": 1
+        }},
+        {"$limit": 10}
+    ])
+    amc_7_days = await amc_7_days_cursor.to_list(10)
+    
+    for item in amc_7_days:
+        if item.get("end_date"):
+            end_date = datetime.strptime(item["end_date"], "%Y-%m-%d")
+            item["days_remaining"] = (end_date - today).days
+    
+    # AMC expiring in 8-15 days
+    amc_15_days_cursor = db.amc_device_assignments.aggregate([
+        {"$match": {
+            "organization_id": org_id,
+            "end_date": {"$gt": seven_days, "$lte": fifteen_days}
+        }},
+        {"$lookup": {
+            "from": "devices",
+            "localField": "device_id",
+            "foreignField": "id",
+            "as": "device"
+        }},
+        {"$unwind": {"path": "$device", "preserveNullAndEmptyArrays": True}},
+        {"$project": {
+            "_id": 0,
+            "brand": "$device.brand",
+            "model": "$device.model",
+            "end_date": 1
+        }},
+        {"$limit": 10}
+    ])
+    amc_15_days = await amc_15_days_cursor.to_list(10)
+    
+    for item in amc_15_days:
+        if item.get("end_date"):
+            end_date = datetime.strptime(item["end_date"], "%Y-%m-%d")
+            item["days_remaining"] = (end_date - today).days
+    
+    return {
+        "warranty_expiring_7_days": warranty_7_days,
+        "warranty_expiring_15_days": warranty_15_days,
+        "amc_expiring_7_days": amc_7_days,
+        "amc_expiring_15_days": amc_15_days
+    }
+
+
+@api_router.get("/org/devices")
+async def get_org_devices(
+    user: dict = Depends(get_current_org_user),
+    limit: int = 50,
+    skip: int = 0,
+    search: Optional[str] = None
+):
+    """Get devices for this organization"""
+    org = user["organization"]
+    org_id = org["id"]
+    
+    query = {"organization_id": org_id}
+    
+    if search:
+        search_regex = {"$regex": search.strip(), "$options": "i"}
+        query["$or"] = [
+            {"brand": search_regex},
+            {"model": search_regex},
+            {"serial_number": search_regex},
+            {"asset_tag": search_regex}
+        ]
+    
+    devices = await db.devices.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.devices.count_documents(query)
+    
+    return {"devices": devices, "total": total}
+
+
 # ==================== ORG SETTINGS ENDPOINTS ====================
 
 class OrgSettingsUpdate(BaseModel):
