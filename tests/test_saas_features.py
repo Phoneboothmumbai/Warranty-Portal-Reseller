@@ -39,9 +39,9 @@ class TestSubdomainAvailability:
         assert data["available"] == False
         assert "reserved" in data["reason"].lower()
     
-    def test_subdomain_reserved_www(self):
-        """Test that reserved subdomain 'www' is not available"""
-        response = requests.get(f"{BASE_URL}/api/check-subdomain/www")
+    def test_subdomain_reserved_support(self):
+        """Test that reserved subdomain 'support' is not available"""
+        response = requests.get(f"{BASE_URL}/api/check-subdomain/support")
         
         assert response.status_code == 200
         data = response.json()
