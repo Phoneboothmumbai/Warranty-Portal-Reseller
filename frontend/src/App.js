@@ -68,6 +68,8 @@ function App() {
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/warranty/:serialNumber" element={<WarrantyResult />} />
                   <Route path="/device/:identifier" element={<PublicDevicePage />} />
+                  <Route path="/signup" element={<SignupPage />} />
+                  <Route path="/org/login" element={<OrgLoginPage />} />
                   
                   {/* Admin Routes */}
                   <Route path="/admin/login" element={<AdminLogin />} />
