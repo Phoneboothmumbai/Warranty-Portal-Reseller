@@ -111,6 +111,208 @@ async def get_public_settings():
         "company_name": settings.get("company_name", "Warranty Portal")
     }
 
+# ==================== PUBLIC ORG WARRANTY ENDPOINTS ====================
+
+@api_router.get("/public/org/{slug}")
+async def get_public_org_info(slug: str):
+    """Get public organization info by subdomain slug"""
+    org = await db.organizations.find_one(
+        {"slug": slug.lower(), "is_active": True},
+        {"_id": 0, "id": 1, "name": 1, "slug": 1, "logo_url": 1, "branding": 1}
+    )
+    
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    return {
+        "id": org.get("id"),
+        "name": org.get("name"),
+        "slug": org.get("slug"),
+        "logo_url": org.get("logo_url"),
+        "branding": org.get("branding", {})
+    }
+
+
+@api_router.get("/public/org/{slug}/warranty")
+async def public_org_warranty_search(slug: str, q: str):
+    """
+    Public warranty search for a specific organization's devices.
+    Returns detailed device info, parts, service history, and AMC coverage.
+    """
+    if not q or len(q.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Search query too short")
+    
+    # Find the organization
+    org = await db.organizations.find_one(
+        {"slug": slug.lower(), "is_active": True},
+        {"_id": 0, "id": 1, "name": 1}
+    )
+    
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    org_id = org["id"]
+    q = q.strip()
+    
+    # Search device by serial number or asset tag within this organization
+    device = await db.devices.find_one(
+        {"$and": [
+            {"organization_id": org_id},
+            {"is_deleted": {"$ne": True}},
+            {"$or": [
+                {"serial_number": {"$regex": f"^{q}$", "$options": "i"}},
+                {"asset_tag": {"$regex": f"^{q}$", "$options": "i"}}
+            ]}
+        ]},
+        {"_id": 0}
+    )
+    
+    if not device:
+        raise HTTPException(status_code=404, detail="No device found with this serial number or asset tag")
+    
+    # Check if device is retired/scrapped
+    if device.get("status") in ["retired", "scrapped"]:
+        return {
+            "device": {
+                "id": device.get("id"),
+                "device_type": device.get("device_type"),
+                "brand": device.get("brand"),
+                "model": device.get("model"),
+                "serial_number": device.get("serial_number"),
+                "asset_tag": device.get("asset_tag"),
+                "status": device.get("status"),
+                "message": "This asset is no longer active"
+            },
+            "company_name": None,
+            "parts": [],
+            "service_history": [],
+            "amc": None,
+            "amc_contract": None,
+            "coverage_source": None
+        }
+    
+    # Get company info (org's client company, if assigned)
+    company_name = None
+    if device.get("company_id"):
+        company = await db.org_companies.find_one(
+            {"id": device["company_id"], "organization_id": org_id},
+            {"_id": 0, "name": 1}
+        )
+        company_name = company.get("name") if company else None
+    
+    # Get assigned user name
+    assigned_user = None
+    if device.get("assigned_user_id"):
+        user = await db.org_users.find_one(
+            {"id": device["assigned_user_id"], "organization_id": org_id},
+            {"_id": 0, "name": 1}
+        )
+        assigned_user = user.get("name") if user else None
+    
+    # Calculate device warranty status
+    device_warranty_expiry = device.get("warranty_end") or device.get("warranty_end_date")
+    device_warranty_active = is_warranty_active(device_warranty_expiry) if device_warranty_expiry else False
+    
+    # Check AMC coverage
+    active_amc_assignment = await db.amc_device_assignments.find_one({
+        "device_id": device["id"],
+        "organization_id": org_id,
+        "status": "active"
+    }, {"_id": 0})
+    
+    amc_contract_info = None
+    amc_coverage_active = False
+    coverage_source = "device_warranty"
+    
+    if active_amc_assignment:
+        amc_coverage_active = is_warranty_active(active_amc_assignment.get("coverage_end", ""))
+        
+        if amc_coverage_active:
+            amc_contract = await db.amc_contracts.find_one({
+                "id": active_amc_assignment["amc_contract_id"],
+                "organization_id": org_id,
+                "is_deleted": {"$ne": True}
+            }, {"_id": 0})
+            
+            if amc_contract:
+                coverage_source = "amc_contract"
+                amc_contract_info = {
+                    "contract_id": amc_contract["id"],
+                    "name": amc_contract.get("name"),
+                    "amc_type": amc_contract.get("amc_type"),
+                    "coverage_start": active_amc_assignment.get("coverage_start"),
+                    "coverage_end": active_amc_assignment.get("coverage_end"),
+                    "active": True,
+                    "coverage_includes": amc_contract.get("coverage_includes"),
+                    "entitlements": amc_contract.get("entitlements")
+                }
+    
+    # Get parts and their warranty status
+    parts_cursor = db.parts.find(
+        {"device_id": device["id"], "organization_id": org_id, "is_deleted": {"$ne": True}},
+        {"_id": 0}
+    )
+    parts = []
+    async for part in parts_cursor:
+        part_warranty_active = is_warranty_active(part.get("warranty_end", ""))
+        parts.append({
+            "part_name": part.get("part_name"),
+            "part_number": part.get("part_number"),
+            "serial_number": part.get("serial_number"),
+            "brand": part.get("brand"),
+            "warranty_end": part.get("warranty_end"),
+            "warranty_active": part_warranty_active,
+            "status": part.get("status")
+        })
+    
+    # Get service history (detailed for org customers)
+    service_cursor = db.service_history.find(
+        {"device_id": device["id"], "organization_id": org_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(20)
+    
+    service_history = []
+    async for entry in service_cursor:
+        service_history.append({
+            "id": entry.get("id"),
+            "service_type": entry.get("service_type"),
+            "description": entry.get("description"),
+            "technician": entry.get("technician"),
+            "status": entry.get("status"),
+            "cost": entry.get("cost"),
+            "created_at": entry.get("created_at"),
+            "notes": entry.get("notes")
+        })
+    
+    # Determine final warranty status (AMC overrides device warranty)
+    final_warranty_active = amc_coverage_active or device_warranty_active
+    
+    return {
+        "device": {
+            "id": device.get("id"),
+            "device_type": device.get("device_type"),
+            "brand": device.get("brand"),
+            "model": device.get("model"),
+            "serial_number": device.get("serial_number"),
+            "asset_tag": device.get("asset_tag"),
+            "purchase_date": device.get("purchase_date"),
+            "warranty_end": device_warranty_expiry,
+            "warranty_active": final_warranty_active,
+            "device_warranty_active": device_warranty_active,
+            "condition": device.get("condition"),
+            "status": device.get("status"),
+            "vendor": device.get("vendor"),
+            "location": device.get("location")
+        },
+        "company_name": company_name,
+        "assigned_user": assigned_user,
+        "parts": parts,
+        "service_history": service_history,
+        "amc_contract": amc_contract_info,
+        "coverage_source": coverage_source
+    }
+
+
 # ==================== SAAS / SUBSCRIPTION ENDPOINTS ====================
 
 @api_router.get("/plans")
