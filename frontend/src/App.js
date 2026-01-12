@@ -102,14 +102,13 @@ function App() {
                   <Route path="/org/admin" element={<OrgAdminLayout />}>
                     <Route index element={<Navigate to="/org/admin/dashboard" replace />} />
                     <Route path="dashboard" element={<OrgAdminDashboard />} />
-                    {/* Placeholder routes - will be implemented */}
-                    <Route path="sites" element={<PlaceholderPage title="Sites" />} />
-                    <Route path="users" element={<PlaceholderPage title="Users" />} />
-                    <Route path="devices" element={<PlaceholderPage title="Devices" />} />
+                    <Route path="sites" element={<OrgSites />} />
+                    <Route path="users" element={<OrgUsers />} />
+                    <Route path="devices" element={<OrgDevices />} />
                     <Route path="deployments" element={<PlaceholderPage title="Deployments" />} />
-                    <Route path="parts" element={<PlaceholderPage title="Parts" />} />
+                    <Route path="parts" element={<OrgParts />} />
                     <Route path="licenses" element={<PlaceholderPage title="Licenses" />} />
-                    <Route path="service-history" element={<PlaceholderPage title="Service History" />} />
+                    <Route path="service-history" element={<OrgServiceHistory />} />
                     <Route path="amc-contracts" element={<PlaceholderPage title="AMC Contracts" />} />
                     <Route path="supply-products" element={<PlaceholderPage title="Office Supplies - Products" />} />
                     <Route path="supply-orders" element={<PlaceholderPage title="Office Supplies - Orders" />} />
