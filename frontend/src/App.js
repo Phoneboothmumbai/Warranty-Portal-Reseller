@@ -96,6 +96,10 @@ function App() {
                   <Route path="/warranty/:serialNumber" element={<WarrantyResult />} />
                   <Route path="/device/:identifier" element={<PublicDevicePage />} />
                   <Route path="/signup" element={<SignupPage />} />
+                  
+                  {/* Public Org Warranty Page - for tenant subdomains */}
+                  <Route path="/org/:slug/warranty" element={<OrgWarrantyPage />} />
+                  
                   <Route path="/org/login" element={<OrgLoginPage />} />
                   <Route path="/org/dashboard" element={<Navigate to="/org/admin/dashboard" replace />} />
                   <Route path="/org/settings" element={<Navigate to="/org/admin/integrations" replace />} />
