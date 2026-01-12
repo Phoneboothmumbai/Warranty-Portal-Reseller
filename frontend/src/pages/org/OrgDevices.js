@@ -126,6 +126,7 @@ const OrgDevices = () => {
   const openCreateModal = () => {
     setEditingDevice(null);
     setFormData({
+      company_id: filterCompany || '',
       device_type: '',
       brand: '',
       model: '',
@@ -147,6 +148,7 @@ const OrgDevices = () => {
   const openEditModal = (device) => {
     setEditingDevice(device);
     setFormData({
+      company_id: device.company_id || '',
       device_type: device.device_type || '',
       brand: device.brand || '',
       model: device.model || '',
