@@ -37,7 +37,7 @@ const OrgLoginPage = () => {
       localStorage.setItem('organization', JSON.stringify(response.data.organization));
       
       toast.success('Welcome back!');
-      navigate('/org/dashboard');
+      navigate('/org/admin/dashboard');
       
     } catch (error) {
       const message = error.response?.data?.detail || 'Invalid email or password';
