@@ -76,7 +76,7 @@ async def create_organization(
     organization = {
         "id": org_id,
         "name": name,
-        "slug": slug,
+        "slug": final_slug,
         "owner_id": owner_id,
         "email": owner_email.lower(),
         "phone": owner_phone,
@@ -85,6 +85,9 @@ async def create_organization(
         "plan_id": "plan_free",
         "subscription_status": "trialing",
         "trial_ends_at": trial_ends,
+        "osticket_url": None,
+        "osticket_api_key": None,
+        "osticket_enabled": False,
         "is_active": True,
         "is_verified": False,
         "feature_overrides": {},
