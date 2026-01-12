@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useOutletContext, Link } from 'react-router-dom';
+import { useOutletContext, Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { 
   Plus, Search, Edit2, Trash2, Laptop, MoreVertical, Eye,
-  Calendar, Shield, CheckCircle, XCircle, AlertTriangle, QrCode
+  Calendar, Shield, CheckCircle, XCircle, AlertTriangle, QrCode, Building2
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -14,19 +14,23 @@ const API = process.env.REACT_APP_BACKEND_URL;
 
 const OrgDevices = () => {
   const { orgData } = useOutletContext();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [devices, setDevices] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
   const [masters, setMasters] = useState({ device_types: [], brands: [], conditions: [], statuses: [] });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterCompany, setFilterCompany] = useState(searchParams.get('company') || '');
   const [modalOpen, setModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState(null);
   const [selectedDevice, setSelectedDevice] = useState(null);
   
   const [formData, setFormData] = useState({
+    company_id: '',
     device_type: '',
     brand: '',
     model: '',
@@ -50,17 +54,20 @@ const OrgDevices = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [filterCompany]);
 
   const fetchData = async () => {
     try {
-      const [devicesRes, sitesRes, usersRes, mastersRes] = await Promise.all([
-        axios.get(`${API}/api/org/devices`, { headers: getAuthHeaders() }),
+      const params = filterCompany ? { company_id: filterCompany } : {};
+      const [devicesRes, companiesRes, sitesRes, usersRes, mastersRes] = await Promise.all([
+        axios.get(`${API}/api/org/devices`, { params, headers: getAuthHeaders() }),
+        axios.get(`${API}/api/org/companies`, { headers: getAuthHeaders() }),
         axios.get(`${API}/api/org/sites`, { headers: getAuthHeaders() }),
         axios.get(`${API}/api/org/users`, { headers: getAuthHeaders() }),
         axios.get(`${API}/api/org/masters`, { headers: getAuthHeaders() }).catch(() => ({ data: {} }))
       ]);
       setDevices(devicesRes.data.devices || []);
+      setCompanies(companiesRes.data || []);
       setSites(sitesRes.data || []);
       setUsers(usersRes.data || []);
       setMasters(mastersRes.data || { device_types: [], brands: [], conditions: [], statuses: [] });
@@ -69,6 +76,11 @@ const OrgDevices = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCompanyName = (companyId) => {
+    const company = companies.find(c => c.id === companyId);
+    return company?.name || '-';
   };
 
   const handleSubmit = async (e) => {
